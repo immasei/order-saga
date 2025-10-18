@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: delivery-co
+  datasource:
+    url: jdbc:postgresql://localhost:15432/deliveryco
+    username: deliveryco
+    password: changeme
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: false
+  kafka:
+    bootstrap-servers: localhost:19092
+    consumer:
+      group-id: delivery-co
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.deliveryco.messaging.dto"
+        spring.json.value.default.type: com.deliveryco.messaging.dto.DeliveryRequestMessage
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+deliveryco:
+  scheduler:
+    worker-id: ${HOSTNAME:local}-${random.uuid}
+    default-delay: 5s
+    jitter: 2s
+    loss-rate-default: 0.05
+  kafka:
+    request-topic: delivery.requests
+    status-topic: delivery.status
+    dead-letter-topic: delivery.status.dlq
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+logging:
+  level:
+    com.deliveryco: INFO
