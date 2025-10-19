@@ -5,6 +5,7 @@ import com.example.bank.dto.customer.CustomerResponse;
 import com.example.bank.dto.account.AccountResponse;
 import com.example.bank.entity.Customer;
 import com.example.bank.repository.CustomerRepository;
+import jakarta.transaction.Transactional;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ public class CustomerService implements DtoMapper<Customer, CreateCustomerReques
         this.modelMapper = modelMapper;
     }
 
+    @Transactional
     public CustomerResponse createCustomer(CreateCustomerRequest request) {
         Customer customer = customerRepository.save(toEntity(request));
         return toResponse(customer);

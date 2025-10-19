@@ -14,7 +14,6 @@ import java.math.BigDecimal;
 import java.util.List;
 
 @Service
-@Transactional
 public class TransactionService implements DtoMapper<Transaction, TransactionRequest, TransactionResponse> {
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
@@ -29,18 +28,7 @@ public class TransactionService implements DtoMapper<Transaction, TransactionReq
         this.modelMapper = modelMapper;
     }
 
-
-    private Transaction createAndSaveTx(Account from, Account to, TransactionRequest req) {
-        Transaction tx = toEntity(req);
-        System.out.println(tx);
-        tx.setFromAccount(from);
-        tx.setToAccount(to);
-        tx = transactionRepository.save(tx);
-        if (from != null) from.addOutgoingTransaction(tx);
-        if (to != null) to.addIncomingTransaction(tx);
-        return tx;
-    }
-
+    @Transactional
     public TransactionResponse transfer(TransferRequest req) {
         List<Account> accounts = accountRepository.lockOrThrow(
                 List.of(req.getFromAccountId(), req.getToAccountId())
@@ -69,6 +57,7 @@ public class TransactionService implements DtoMapper<Transaction, TransactionReq
         return toResponse(tx);
     }
 
+    @Transactional
     public TransactionResponse withdraw(WithdrawRequest req) {
         Account from = accountRepository.lockOrThrow(req.getFromAccountId());
         BigDecimal amount = req.getAmount();
@@ -81,6 +70,7 @@ public class TransactionService implements DtoMapper<Transaction, TransactionReq
         return toResponse(tx);
     }
 
+    @Transactional
     public TransactionResponse refund(RefundRequest req) {
         Transaction original = transactionRepository.getOrThrow(req.getOriginalTransactionId());
         BigDecimal amount = original.getAmount();
@@ -129,6 +119,17 @@ public class TransactionService implements DtoMapper<Transaction, TransactionReq
         reversal.setFromAccount(null);
 
         return reversal;
+    }
+
+    private Transaction createAndSaveTx(Account from, Account to, TransactionRequest req) {
+        Transaction tx = toEntity(req);
+        System.out.println(tx);
+        tx.setFromAccount(from);
+        tx.setToAccount(to);
+        tx = transactionRepository.save(tx);
+        if (from != null) from.addOutgoingTransaction(tx);
+        if (to != null) to.addIncomingTransaction(tx);
+        return tx;
     }
 
     @Override
