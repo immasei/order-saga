@@ -2,6 +2,7 @@ package com.example.store.controller;
 
 import com.example.store.model.CustomerOrder;
 import com.example.store.repository.OrderDetailsRepository;
+import com.example.store.service.ProductPurchaseHistoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +17,9 @@ public class OrderDetailsController {
     @Autowired
     private OrderDetailsRepository orderDetailsRepository;
 
+    @Autowired
+    private ProductPurchaseHistoryService historyService;
+
     // Get order details by order number
     @GetMapping("/{orderNumber}")
     public ResponseEntity<CustomerOrder> getOrderByOrderNumber(@PathVariable String orderNumber) {
@@ -29,6 +33,8 @@ public class OrderDetailsController {
         // Ensure bidirectional link is set
         orderDetails.getOrderItems().forEach(item -> item.setOrderDetails(orderDetails));
         CustomerOrder createdOrder = orderDetailsRepository.save(orderDetails);
+        // Update purchase history for all items
+        historyService.updatePurchaseHistory(createdOrder.getOrderItems());
         return ResponseEntity.ok(createdOrder);
     }
 
