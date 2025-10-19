@@ -1,6 +1,8 @@
 package com.example.store.model;
 
 import com.example.store.model.enums.UserRole;
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -12,15 +14,12 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "user_type")
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = Customer.class, name = "CUSTOMER"),
+        @JsonSubTypes.Type(value = Admin.class, name = "ADMIN")
+})
 public abstract class UserAccount {
-    /*
-    * This is an abstract class. All customers are users but not all users
-    * are customers, so customer inherits from user.
-    * The inheritance strategy is JOINED, meaning there is one table
-    * per class (i.e. The User table holds common fields. The Customer
-    * table holds customer-specific fields and a foreign key to the
-    * User table (which also acts as its primary key).
-    * */
 
     @Id
     @GeneratedValue
@@ -32,7 +31,7 @@ public abstract class UserAccount {
     @Column(name = "password_hash", length = 255, nullable = false)
     private String passwordHash;
 
-    @Enumerated(EnumType.STRING) // Enums found in the enums package, we have ADMIN, CUSTOMER, and GUEST
+    @Enumerated(EnumType.STRING)
     private UserRole role;
 
     @Column(name = "first_name", length = 100)
@@ -41,7 +40,6 @@ public abstract class UserAccount {
     @Column(name = "last_name", length = 100)
     private String lastName;
 
-    // Constructor
     public UserAccount(String email, String passwordHash, UserRole role, String firstName, String lastName) {
         this.email = email;
         this.passwordHash = passwordHash;
@@ -50,7 +48,6 @@ public abstract class UserAccount {
         this.lastName = lastName;
     }
 
-    // Debugging method
     @Override
     public String toString() {
         return "UserAccount{" +

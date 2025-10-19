@@ -3,6 +3,7 @@ package com.example.store.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -45,7 +46,7 @@ public class CustomerOrder {
     private java.time.LocalDateTime placedAt;
 
     @OneToMany(mappedBy = "orderDetails", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<OrderItems> orderItems;
+    private List<OrderItems> orderItems = new ArrayList<>();
 
     // Constructor
     public CustomerOrder(String orderNumber, Customer customer, String deliveryAddress, String status,
@@ -59,6 +60,11 @@ public class CustomerOrder {
         this.tax = tax;
         this.total = total;
         this.placedAt = placedAt;
+    }
+
+    public void addOrderItem(OrderItems item) {
+        item.setOrderDetails(this);
+        this.orderItems.add(item);
     }
 
     // Debugging method
