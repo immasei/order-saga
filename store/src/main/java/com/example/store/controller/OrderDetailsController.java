@@ -26,6 +26,8 @@ public class OrderDetailsController {
     // Create a new order
     @PostMapping
     public ResponseEntity<CustomerOrder> createOrder(@RequestBody CustomerOrder orderDetails) {
+        // Ensure bidirectional link is set
+        orderDetails.getOrderItems().forEach(item -> item.setOrderDetails(orderDetails));
         CustomerOrder createdOrder = orderDetailsRepository.save(orderDetails);
         return ResponseEntity.ok(createdOrder);
     }
