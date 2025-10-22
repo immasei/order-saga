@@ -1,0 +1,42 @@
+# Sending an email
+POST /api/emails/send HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Content-Length: 184
+
+{
+  "orderId": "550e8400-e29b-41d4-a716-446655440000",
+  "toAddress": "moh@outlook.com",
+  "subject": "Testing email",
+  "body": "Writing this email to check something."
+}
+
+###
+#Get by message ID
+GET /api/emails/3f896693-8b9b-46b9-b6a4-613f9ca5d232 HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Content-Length: 184
+
+{
+"orderId": "550e8400-e29b-41d4-a716-446655440000",
+"toAddress": "moh@outlook.com",
+"subject": "Testing email",
+"body": "Writing this email to check something."
+}
+
+###
+# Get by order ID
+GET /api/emails/order/550e8400-e29b-41d4-a716-446655440000 HTTP/1.1
+Host: localhost:8080
+
+###
+# Changing status of order
+PUT /api/emails/12674f86-990f-45ac-a5d9-b1c5216ac49d/status?status=Delivered HTTP/1.1
+Host: localhost:8080
+
+
+###
+# Get by to Address
+GET /api/emails/toaddress/moh@outlook.com HTTP/1.1
+Host: localhost:8080
