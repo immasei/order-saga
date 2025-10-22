@@ -34,8 +34,14 @@ public class EmailController {
 		return ResponseEntity.ok(emailMessageRepository.findByOrderId(orderId));
 	}
 
+	@GetMapping("/toaddress/{toAddress}")
+	public ResponseEntity<List<EmailMessage>> getByToAddress(@PathVariable String toAddress) {
+		return ResponseEntity.ok(emailMessageRepository.findByToAddress(toAddress));
+	}
+
 	@PostMapping("/send")
 	public ResponseEntity<EmailMessage> sendEmail(@RequestBody EmailMessage request) {
+		// Need to specify orderId specifically with the 36 char UUID within strings.
 		EmailMessage toPersist = EmailMessage.builder()
 				.orderId(request.getOrderId())
 				.toAddress(request.getToAddress())
