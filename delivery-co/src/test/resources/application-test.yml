@@ -1,0 +1,14 @@
+deliveryco:
+  scheduler:
+    default-delay: 200ms
+    jitter: 0ms
+  kafka:
+    request-topic: delivery.requests
+    status-topic: delivery.status
+    dead-letter-topic: delivery.status.dlq
+
+spring:
+  kafka:
+    consumer:
+      auto-offset-reset: earliest
+
