@@ -4,16 +4,16 @@
 
 This project implements a **store management system** using Spring Boot. It includes:
 
-- Users: `Customer`, `Admin` (inheritance from `UserAccount`)
+- Users: `Customer`, `Admin` (inheritance from `User`)
 - Warehouses: `Warehouse` → `Warehouse1Stock` & `Warehouse2Stock` (composition & inheritance)
 - Products, Orders, and Purchase History management
 - REST APIs to perform CRUD operations and manage stock
 
 Polymorphism and inheritance are used to generalize behavior:
 
-- **UserAccount → Customer / Admin**
-    - `UserAccount` is the parent class with fields like `email`, `passwordHash`, `role`
-    - `Customer` and `Admin` extend `UserAccount` and add specific fields (e.g., `phone`, `address` for Customer)
+- **User → Customer / Admin**
+    - `User` is the parent class with fields like `email`, `passwordHash`, `role`
+    - `Customer` and `Admin` extend `User` and add specific fields (e.g., `phone`, `address` for Customer)
 - **Warehouse → Warehouse1Stock / Warehouse2Stock**
     - `Warehouse` holds generic warehouse information
     - `Warehouse1Stock` & `Warehouse2Stock` extend the concept to track **stock per warehouse**, enabling polymorphic handling of warehouse inventory
@@ -22,9 +22,95 @@ Polymorphism and inheritance are used to generalize behavior:
 
 ## API Endpoints
 
+### 0. Auth Management
+
+#### Quick facts
+- **Roles**: `ADMIN`, `CUSTOMER`
+- **Signup**: Public, `CUSTOMER` only (cannot create `ADMIN`)
+- **Admin creation**: `ADMIN` only via `/api/admins`
+- **Access token (JWT)**: Returned in response, client must send as `Authorization: Bearer <token>`
+  - last 1 day
+- **Refresh token (JWT)**: Set as HttpOnly cookie named `refreshToken`
+  - Refresh token is not rotated.
+  - Refresh cookie path limited to `/api/auth/refresh`
+- **Typical errors**: 400 validation, 401 invalid/expired JWT, 403 forbidden, 404 not found, 409 email already in use
+- **CustomerController**
+  - get/update/delete: hasRole('ADMIN') or @customerSecurity.isAccountOwner(#id)
+  - create: hasRole('ADMIN')
+- **AdminController**
+  - All routes require ADMIN
+
+```
+[Client]                         [Backend]
+   │   POST api/auth/login
+   ├──────────────────────────────►   create tokens
+   │   ◄────────────────────────────  accessToken (body)
+   │                                  refreshToken (HttpOnly cookie)
+   │
+   │  GET /api/<smt> (Authorization: Bearer <accessToken>)
+   ├──────────────────────────────►   validate access token
+   │
+   │  accessToken expires
+   │
+   │  POST api/auth/refresh (cookie auto-sent)
+   ├──────────────────────────────►   validate refresh, issue new access
+   │   ◄────────────────────────────  new accessToken (body)
+
+``` 
+
+#### Notes to add
+
+- Example of authorisation at controller level: see `controller/CustomerController` (method-level `@PreAuthorize` with owner-or-admin checks).
+- Configure public vs private routes in `config/WebSecurityConfig`.
+
+#### Mini routes table
+
+Method | Path | Auth | Description
+-------|------|------|-------------
+POST | /api/auth/signup | Public | Sign up customer and auto-login. Sets refresh cookie; returns access tokens.
+POST | /api/auth/login | Public | Login. Sets refresh cookie; returns access tokens.
+POST | /api/auth/refresh | Cookie refreshToken (HttpOnly) | Issues new access token using refresh cookie.
+POST | /api/auth/logout | Any logged-in user | Clears refresh cookie.
+POST | /api/admins | ADMIN | Create admin account.
+GET | /api/admins | ADMIN | List all admins.
+GET | /api/admins/{id} | ADMIN | Get admin by ID.
+GET | /api/customers/{id} | ADMIN or resource owner | Get customer by ID.
+POST | /api/customers | ADMIN | Create customer (admin-created).
+PATCH | /api/customers/{id} | ADMIN or resource owner | Partial update of a customer.
+DELETE | /api/customers/{id} | ADMIN or resource owner | Delete a customer.
+GET | /api/customers | ADMIN | List all customers.
+
+---
+
+#### Signup (create Customer only)
+
+```json
+{
+  "email": "a@example.com",
+  "password": "123456",
+  "firstName": "Mickey",
+  "lastName": "Mouse",
+  "role": "CUSTOMER",
+  "address": "123 Main St, Springfield, IL",
+  "phone": "123-456-7890"
+}
+```
+
+#### Login
+
+**Default admin account**
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "supersaiya"
+}
+```
+
+
 ### 1. User Management
 
-#### Create Admin
+#### Create Admin (admin only)
 
 ```POST http://localhost:8080/api/admins```
 
@@ -41,7 +127,7 @@ Polymorphism and inheritance are used to generalize behavior:
 }
 ```
 
-#### Create Customer
+#### Create Customer (admin only)
 ```POST http://localhost:8080/api/customers```
 
 **Body:**
@@ -162,7 +248,7 @@ Brace urself for this api call yall
 
 
 ### Polymorphism & Inheritance Notes
-- UserAccount → Customer / Admin
+- User → Customer / Admin
   -  Treat all users generically when needed (e.g., login, listing users)
   -  Admin-specific and Customer-specific fields are only available when casting to the correct type
 - Warehouse → Warehouse1Stock / Warehouse2Stock
@@ -175,8 +261,8 @@ Brace urself for this api call yall
 
 
     classDiagram
-    UserAccount <|-- Admin
-    UserAccount <|-- Customer
+    User <|-- Admin
+    User <|-- Customer
 
     Warehouse <|-- Warehouse1Stock
     Warehouse <|-- Warehouse2Stock
