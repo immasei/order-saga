@@ -1,45 +1,46 @@
 package com.example.store.controller;
 
-import com.example.store.model.Admin;
-import com.example.store.service.AdminService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.store.dto.account.CreateAdminDTO;
+import com.example.store.dto.account.UserDTO;
+import com.example.store.model.enums.UserRole;
+import com.example.store.service.UserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
+
+/**
+ * Authenticated Routes: ADMIN only
+ */
 
 @RestController
 @RequestMapping("/api/admins")
+@RequiredArgsConstructor
 public class AdminController {
 
-    @Autowired
-    private AdminService adminService;
+    private final UserService userService;
 
-    // Create a new Admin
+    // Create a new user
     @PostMapping
-    public ResponseEntity<Admin> createAdmin(@RequestBody Admin admin) {
-        Admin createdAdmin = adminService.createAdmin(admin);
-        return new ResponseEntity<>(createdAdmin, HttpStatus.CREATED);
+    public ResponseEntity<UserDTO> createAdmin(@RequestBody CreateAdminDTO adminDto) {
+        UserDTO admin = userService.createUser(adminDto);
+        return new ResponseEntity<>(admin, HttpStatus.CREATED);
     }
 
     // Get all Admins
     @GetMapping
-    public ResponseEntity<List<Admin>> getAllAdmins() {
-        List<Admin> admins = adminService.getAllAdmins();
+    public ResponseEntity<List<UserDTO>> getAllAdmins() {
+        List<UserDTO> admins = userService.getUsersByRole(UserRole.ADMIN);
         return new ResponseEntity<>(admins, HttpStatus.OK);
     }
 
     // Get Admin by ID
     @GetMapping("/{id}")
-    public ResponseEntity<Admin> getAdminById(@PathVariable UUID id) {
-        Optional<Admin> admin = adminService.getAdminById(id);
-        if (admin.isPresent()) {
-            return new ResponseEntity<>(admin.get(), HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
+    public ResponseEntity<UserDTO> getAdminById(@PathVariable UUID id) {
+        UserDTO admin = userService.getUserByIdAndRole(id, UserRole.ADMIN);
+        return ResponseEntity.ok(admin);
     }
 }

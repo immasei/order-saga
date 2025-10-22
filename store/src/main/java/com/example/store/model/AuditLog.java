@@ -1,5 +1,6 @@
 package com.example.store.model;
 
+import com.example.store.model.account.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -17,7 +18,7 @@ public class AuditLog {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "actor_user_id", referencedColumnName = "id", nullable = false)
-    private UserAccount actor;  // The user who performed the action
+    private User actor;  // The user who performed the action
 
     @Column(name = "entity_type", length = 80, nullable = false)
     private String entityType;  // Type of entity being acted upon (e.g., 'ORDER', 'TRANSACTION')
@@ -35,7 +36,7 @@ public class AuditLog {
     private java.time.LocalDateTime createdAt;  // Timestamp of when the action occurred
 
     // Constructor
-    public AuditLog(UserAccount actor, String entityType, UUID entityId, String action, String details, java.time.LocalDateTime createdAt) {
+    public AuditLog(User actor, String entityType, UUID entityId, String action, String details, java.time.LocalDateTime createdAt) {
         this.actor = actor;
         this.entityType = entityType;
         this.entityId = entityId;

@@ -1,5 +1,6 @@
 package com.example.store.model;
 
+import com.example.store.model.account.Customer;
 import jakarta.persistence.*;
 import lombok.*;
 
