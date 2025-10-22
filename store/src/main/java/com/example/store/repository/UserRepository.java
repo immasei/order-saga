@@ -1,0 +1,33 @@
+package com.example.store.repository;
+
+import com.example.store.exception.ResourceNotFoundException;
+import com.example.store.model.account.User;
+import com.example.store.model.enums.UserRole;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, UUID> {
+
+    Optional<User> findByEmail(String email);
+    Optional<User> findByIdAndRole(UUID id, UserRole role);
+    List<User> findAllByRole(UserRole role);
+    int countByRole(UserRole userRole);
+
+    default User getOrThrow(UUID id) {
+        return findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "User not found with id: " + id));
+    }
+
+    default User getOrThrow(UUID id, UserRole role) {
+        return findByIdAndRole(id, role)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "User not found with id: " + id + " and role: " + role));
+    }
+
+}

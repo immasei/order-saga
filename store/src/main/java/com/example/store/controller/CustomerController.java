@@ -1,57 +1,71 @@
 package com.example.store.controller;
 
-import com.example.store.model.Customer;
-import com.example.store.repository.CustomerRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.store.dto.account.CreateCustomerDTO;
+import com.example.store.dto.account.UpdateCustomerDTO;
+import com.example.store.dto.account.UserDTO;
+import com.example.store.model.enums.UserRole;
+import com.example.store.service.UserService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
+
+/**
+ * Authenticated Routes
+ */
 
 @RestController
 @RequestMapping("/api/customers")
+@RequiredArgsConstructor
 public class CustomerController {
 
-    @Autowired
-    private CustomerRepository customerRepository;
+    private final UserService userService;
 
-    // Get customer by ID
+    // Get customer by ID (admin or the customer themselves)
+    @PreAuthorize("hasRole('ADMIN') or @customerSecurity.isAccountOwner(#id)")
     @GetMapping("/{id}")
-    public ResponseEntity<Customer> getCustomerById(@PathVariable UUID id) {
-        Optional<Customer> customer = customerRepository.findById(id);
-        return customer.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<UserDTO> getUserById(@PathVariable UUID id) {
+        UserDTO customer = userService.getUserByIdAndRole(id, UserRole.CUSTOMER);
+        return ResponseEntity.ok(customer);
     }
 
-    // Create a new customer
+    // Create a new user (admin only)
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<Customer> createCustomer(@RequestBody Customer customer) {
-        Customer createdCustomer = customerRepository.save(customer);
-        return ResponseEntity.ok(createdCustomer);
+    public ResponseEntity<UserDTO> createCustomer(@RequestBody CreateCustomerDTO customerDto) {
+        UserDTO customer = userService.createUser(customerDto);
+        return new ResponseEntity<>(customer, HttpStatus.CREATED);
     }
 
-    // Update customer details
-    @PutMapping("/{id}")
-    public ResponseEntity<Customer> updateCustomer(@PathVariable UUID id, @RequestBody Customer customerDetails) {
-        Optional<Customer> existingCustomer = customerRepository.findById(id);
-        if (existingCustomer.isPresent()) {
-            Customer customer = existingCustomer.get();
-            customer.setPhone(customerDetails.getPhone());
-            customer.setAddress(customerDetails.getAddress());
-            // Other fields can also be updated here
-            customerRepository.save(customer);
-            return ResponseEntity.ok(customer);
-        }
-        return ResponseEntity.notFound().build();
+    // Update customer details (admin or the customer themselves)
+    @PreAuthorize("hasRole('ADMIN') or @customerSecurity.isAccountOwner(#id)")
+    @PatchMapping(path = "/{id}")
+    public ResponseEntity<UserDTO> updateCustomer(
+        @PathVariable UUID id, @RequestBody @Valid UpdateCustomerDTO customerDto
+    ) {
+        UserDTO customer = userService.updateUserById(id, customerDto);
+        return ResponseEntity.ok(customer);
     }
 
-    // Delete customer by ID
+    // Delete customer by ID (admin or the customer themselves)
+    @PreAuthorize("hasRole('ADMIN') or @customerSecurity.isAccountOwner(#id)")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCustomer(@PathVariable UUID id) {
-        if (customerRepository.existsById(id)) {
-            customerRepository.deleteById(id);
-            return ResponseEntity.noContent().build();
-        }
-        return ResponseEntity.notFound().build();
+    public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
+        userService.deleteUserById(id);
+        return ResponseEntity.noContent().build();
     }
+
+    // Get all customers (admin only)
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping
+    public ResponseEntity<List<UserDTO>> getAllCustomers() {
+        List<UserDTO> customers = userService.getUsersByRole(UserRole.CUSTOMER);
+        return new ResponseEntity<>(customers, HttpStatus.OK);
+    }
+
 }
