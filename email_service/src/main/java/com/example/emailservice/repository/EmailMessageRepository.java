@@ -10,6 +10,8 @@ import java.util.UUID;
 @Repository
 public interface EmailMessageRepository extends JpaRepository<EmailMessage, UUID> {
 	List<EmailMessage> findByOrderId(UUID orderId);
+
+	List<EmailMessage> findByToAddress(String toAddress);
 }
 
 
