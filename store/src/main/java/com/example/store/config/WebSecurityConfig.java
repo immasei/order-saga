@@ -39,8 +39,6 @@ public class WebSecurityConfig {
             "/api/customers",
             "/",
             "/api/auth/**",
-            "/register",
-            "/forgot-password",
             "/css/**",
             "/js/**",
             "/images/**",
@@ -48,16 +46,10 @@ public class WebSecurityConfig {
             "/dashboard",
             "/css/**",
             "/js/**",
-            // Add ALL your web pages here:
             "/",                    // Home page
             "/login",               // Login page
-            "/dashboard",           // Dashboard page
-            "/register",            // Register page
-            "/forgot-password",     // Forgot password page
-            "/css/**",              // CSS files
-            "/js/**",               // JavaScript files
-            "/images/**",           // Images
-            "/webjars/**"           // WebJars (Bootstrap, etc.)
+            "/images/**",
+            "/webjars/**"
     };
 
     @Bean
