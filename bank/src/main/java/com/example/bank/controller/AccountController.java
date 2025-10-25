@@ -1,10 +1,10 @@
 package com.example.bank.controller;
 
-import com.example.bank.dto.account.AccountResponse;
-import com.example.bank.dto.account.CreateAccountRequest;
+import com.example.bank.dto.account.AccountDTO;
+import com.example.bank.dto.account.CreateAccountDTO;
 import com.example.bank.service.AccountService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,38 +13,30 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/customers/{customerId}/accounts")
+@RequiredArgsConstructor
 public class AccountController {
 
     private final AccountService accountService;
 
-    @Autowired
-    public AccountController(AccountService accountService) {
-        this.accountService = accountService;
-    }
-
     @PostMapping
-    public ResponseEntity<AccountResponse> createAccount(
-            @PathVariable Long customerId,
-            @RequestBody @Valid CreateAccountRequest req
+    public ResponseEntity<AccountDTO> createAccount(
+        @PathVariable Long customerId, @RequestBody @Valid CreateAccountDTO accountDto
     ) {
-        AccountResponse account = accountService.createAccount(customerId, req);
+        AccountDTO account = accountService.createAccount(customerId, accountDto);
         return new ResponseEntity<>(account, HttpStatus.CREATED);
     }
 
     @GetMapping("/{accountId}")
-    public ResponseEntity<AccountResponse> getAccountById(
-            @PathVariable Long customerId,
-            @PathVariable Long accountId
+    public ResponseEntity<AccountDTO> getAccountById(
+        @PathVariable Long customerId, @PathVariable Long accountId
     ) {
-        AccountResponse account = accountService.getAccountByIdAndCustomer(customerId, accountId);
+        AccountDTO account = accountService.getAccountByIdAndCustomer(customerId, accountId);
         return ResponseEntity.ok(account);
     }
 
     @GetMapping
-    public ResponseEntity<List<AccountResponse>> getAllAccounts(
-            @PathVariable Long customerId
-    ) {
-        List<AccountResponse> accounts = accountService.getAllAccountsByCustomer(customerId);
+    public ResponseEntity<List<AccountDTO>> getAllAccounts(@PathVariable Long customerId) {
+        List<AccountDTO> accounts = accountService.getAllAccountsByCustomer(customerId);
         return ResponseEntity.ok(accounts);
     }
 

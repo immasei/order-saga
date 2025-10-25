@@ -7,7 +7,7 @@ import lombok.*;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class TransactionRequest {
+public class TransactionDTO {
 
     private TransactionType transactionType;
     private String memo;

@@ -17,9 +17,10 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Entity
 public class Transaction {
+
     @Id
     @GeneratedValue
-    private long id;
+    private Long id;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal amount;
@@ -52,4 +53,5 @@ public class Transaction {
     protected void onCreate() {
         this.time = LocalDateTime.now();
     }
+
 }

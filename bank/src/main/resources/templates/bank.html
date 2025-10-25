@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bank External Service – Light Console</title>
+    <style>
+        :root{
+            --bg:#f8fafc;
+            --card:#ffffff;
+            --text:#0f172a;
+            --muted:#475569;
+            --ring:#3b82f6;
+            --brand:#2563eb;
+            --brand-strong:#1d4ed8;
+            --ok:#16a34a;
+            --danger:#dc2626;
+            --border:#e2e8f0;
+            --code-bg:#0b1020;
+            --shadow: 0 10px 20px rgba(2,6,23,.06), 0 4px 8px rgba(2,6,23,.04);
+            --radius: 16px;
+        }
+        *{box-sizing:border-box}
+        html,body{height:100%}
+        body{
+            margin:0;background:var(--bg);color:var(--text);
+            font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Arial,sans-serif;
+        }
+        a{color:var(--brand);text-decoration:none}
+        a:hover{color:var(--brand-strong);text-decoration:underline}
+        .wrap{
+            min-height:100%;
+            display:grid;
+            grid-template-columns: 1fr 620px; /* Left: work, Right: inspector */
+            gap:24px;
+            padding:24px;
+        }
+        .work{
+            display:flex;
+            flex-direction:column;
+            gap:16px;
+        }
+        /* left nav */
+        .nav{
+            background:var(--card); border:1px solid var(--border);
+            border-radius:var(--radius); box-shadow:var(--shadow);
+            padding:18px; position:sticky; top:24px; align-self:start;
+        }
+        .brand{
+            font-weight:800; letter-spacing:.3px; font-size:18px; margin-bottom:14px;
+        }
+        .nav p{color:var(--muted); margin:0 0 12px}
+        .nav .menu{display:grid; gap:8px; margin-top:8px}
+        .nav .menu a{
+            display:block; padding:10px 12px; border-radius:12px; border:1px solid var(--border);
+            background:#fafcff;
+        }
+        .nav .menu a:hover{background:#f1f5ff}
+        /* main column */
+        .main{display:grid; gap:24px}
+        .card{
+            background:var(--card); border:1px solid var(--border);
+            border-radius:var(--radius); box-shadow:var(--shadow);
+            padding:18px;
+        }
+        .card h2{margin:0 0 6px; font-size:18px}
+        .desc{color:var(--muted); font-size:13px; margin:0 0 14px}
+        .fieldset{
+            border:1px solid var(--border); border-radius:14px; padding:14px; margin:12px 0;
+            background:#dadada21;
+        }
+        .legend{
+            font-weight:500; font-size:12px;
+            margin-bottom:8px;
+        }
+        .inline-2, .inline-3, .inline-5, .inline-6, .inline-7{
+            display:grid; gap:12px;
+        }
+        .inline-2{grid-template-columns: repeat(2, minmax(0,1fr))}
+        .inline-3{grid-template-columns: repeat(3, minmax(0,1fr))}
+        .inline-5{grid-template-columns: repeat(5, minmax(0,1fr))}
+        .inline-6{grid-template-columns: repeat(6, minmax(0,1fr))}
+        .inline-7{grid-template-columns: repeat(7, minmax(0,1fr))}
+        @media (max-width:1200px){
+            .wrap{grid-template-columns: 240px 1fr}
+            .inspector{grid-column: 1 / -1}
+        }
+        @media (max-width:900px){
+            .wrap{grid-template-columns: 1fr}
+            .nav{position:static}
+        }
+        label{display:block; font-weight:600; margin:2px 0 6px}
+        .help{color:var(--muted); font-weight:600}
+        input, select, textarea{
+            width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:12px;
+            background:#fcfdff; outline:none; font:inherit;
+        }
+        input:focus, select:focus, textarea:focus{border-color:var(--ring); box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+        .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+        .spacer{height:8px}
+        .btn{
+            width: 100%; display:inline-flex; align-items:center; gap:8px; border-radius:12px; padding:11px 14px;
+            border:1px solid var(--border); background:#f8fbff; cursor:pointer; font-weight:700; justify-content: center;
+        }
+        .btn.primary{background:linear-gradient(180deg,#e7f0ff,#dbeafe); border-color:#c7d2fe; color:#1e3a8a}
+        .btn.ok{background:#e8f7ee; border-color:#b7ebc6; color:#065f46}
+        .btn.warn{background:#fff4ed; border-color:#ffd7c2; color:#9a3412}
+        .btn.danger{background:#feecee; border-color:#fecdd3; color:#7f1d1d}
+        .btn:disabled{opacity:.6; cursor:not-allowed}
+        .hint{color:var(--muted); font-size:12px}
+        .pill{
+            display:inline-block; padding:4px 10px; border-radius:999px; background:#e2f2ff; color:#1e40af; font-weight:700; font-size:12px; border:1px solid #cfe3ff;
+        }
+        /* inspector (right column) */
+        .inspector{
+            background:var(--card); border:1px solid var(--border);
+            border-radius:var(--radius); box-shadow:var(--shadow);
+            padding:0; display:flex; flex-direction:column; min-height:240px;
+            position:sticky; top:24px; align-self:start;
+        }
+        .inspector header{
+            display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--border);
+        }
+        .tabs{display:flex; gap:8px}
+        .tab{ padding:8px 12px; border:1px solid var(--border); border-radius:999px; background:#f7fbff; font-weight:700; cursor:pointer }
+        .tab.active{ outline:2px solid var(--ring); outline-offset:2px }
+        .tabpanel{ display:none }
+        .tabpanel.active{ display:block }
+        .inspector .body{padding:12px 16px}
+        .kv{display:grid; grid-template-columns: 140px 1fr; gap:6px; font-size:13px}
+        .code{
+            background:var(--code-bg); color:#e5edff; border-radius:12px; padding:12px; overflow:auto; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px
+        }
+        .subtle{color:#9d9e9f}
+        .sep{height:1px; background:var(--border); margin:12px 0}
+        @media (max-width: 1100px){
+            .wrap{ grid-template-columns: 1fr }
+            .inspector{ position:static }
+        }
+        .status-pill{
+            display:inline-flex; align-items:center; gap:6px;
+            padding:4px 10px; border-radius:999px; border:1px solid var(--border);
+            font-weight:800; font-size:12px; letter-spacing:.2px;
+        }
+        .status-ok   { background:#ecfdf5; border-color:#a7f3d0; color:#065f46; } /* 2xx */
+        .status-warn { background:#fffbeb; border-color:#fcd34d; color:#92400e; } /* 3xx */
+        .status-error{ background:#fef2f2; border-color:#fecaca; color:#7f1d1d; } /* 4xx/5xx */
+        .status-info { background:#eef2ff; border-color:#c7d2fe; color:#3730a3; } /* default / pending */
+
+        .header {
+            border-radius: var(--radius);
+            padding: 0px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 14px;
+            margin-bottom: 0px;
+        }
+
+        .tabs-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 2px;
+        }
+
+        .tab {
+            padding: 8px 14px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: #f7fbff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .tab:hover {
+            background: #eff6ff;
+        }
+
+        .tab.active {
+            outline: 2px solid var(--ring);
+            outline-offset: 2px;
+            background: #e0f2fe;
+            color: #1e3a8a;
+        }
+
+
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <section class="work">
+        <!-- TAB SWITCH (top) -->
+        <header class="header">
+            <h1>Bank External Service</h1>
+            <div class="subtitle">
+                A console for <strong>Customers</strong>, <strong>Accounts</strong> & <strong>Transactions</strong>
+            </div>
+
+            <div class="tabs-row" id="tabs">
+                <div class="tab active" data-target="panel-customers">Customers</div>
+                <div class="tab" data-target="panel-accounts">Accounts</div>
+                <div class="tab" data-target="panel-transactions">Transactions</div>
+            </div>
+        </header>
+
+
+        <!-- PANELS (tab contents)-->
+        <main class="main">
+            <!-- Customers -->
+            <section id="panel-customers" class="card tabpanel active">
+                <h2>Customers</h2>
+                <p class="desc">Create and look up customers via <span class="pill">/api/customers</span>.</p>
+
+                <!-- Create Customer -->
+                <div class="fieldset">
+                    <div class="legend">Create Customer (POST /api/customers)</div>
+                    <div class="inline-5">
+                        <div style="grid-column: span 2;">
+                            <input id="custFirst" placeholder="First name" />
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <input id="custLast" placeholder="Last name" />
+                        </div>
+                        <div style="grid-column: span 1;">
+                            <button class="btn primary" id="btnCreateCustomer"
+                                    data-endpoint="/api/customers" data-method="POST">
+                                Create
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Get Customer by ID -->
+                <div class="fieldset">
+                    <div class="legend">Get Customer by ID (GET /api/customers/{id})</div>
+                    <div class="inline-5">
+                        <div style="grid-column: span 4;">
+                            <input id="custIdLookup" type="number" placeholder="Customer Id" />
+                        </div>
+                        <div style="grid-column: span 1;">
+                            <button class="btn primary" id="btnGetCustomer"
+                                    data-endpoint="/api/customers/:customerId" data-method="GET">
+                                Get by Id
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- List Customers -->
+                <div class="fieldset">
+                    <div class="legend">List All Customers (+accounts) (GET /api/customers)</div>
+                    <div class="row">
+                        <button class="btn primary" id="btnListCustomers"
+                                data-endpoint="/api/customers" data-method="GET">
+                            List All Customers
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Accounts -->
+            <section id="panel-accounts" class="card tabpanel">
+                <h2>Accounts</h2>
+                <p class="desc">Manage customer accounts via <span class="pill">/api/customers/{customerId}/accounts</span>.</p>
+
+                <!-- Create Account -->
+                <div class="fieldset">
+                    <div class="legend">Create Account (POST /api/customers/{customerId}/accounts)</div>
+                    <div class="inline-7">
+                        <div style="grid-column: span 2;">
+                            <input id="accCustomerId" type="number" placeholder="Customer Id" />
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <input id="accName" placeholder="Account name" />
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <select id="accType">
+                                <option value="">Account Type</option>
+                                <option value="PERSONAL">PERSONAL</option>
+                                <option value="BUSINESS">BUSINESS</option>
+                            </select>
+                        </div>
+                        <div style="grid-column: span 1;">
+                            <button class="btn primary" id="btnCreateAccount"
+                                    data-endpoint="/api/customers/:customerId/accounts" data-method="POST">
+                                Create
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Get Account by ID -->
+                <div class="fieldset">
+                    <div class="legend">Get Account by ID (GET /api/customers/{customerId}/accounts/{accountId})</div>
+                    <div class="inline-5">
+                        <div style="grid-column: span 2;">
+                            <input id="accLookupCustomerId" type="number" placeholder="Customer Id" />
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <input id="accLookupAccountId" type="number" placeholder="Account Id" />
+                        </div>
+                        <div style="grid-column: span 1;">
+                            <button class="btn primary" id="btnGetAccount"
+                                    data-endpoint="/api/customers/:customerId/accounts/:accountId" data-method="GET">
+                                Get by Id
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- List Accounts by Customer -->
+                <div class="fieldset">
+                    <div class="legend">List Customer Accounts (+transactions) (GET /api/customers/{customerId}/accounts)</div>
+                    <div class="inline-5">
+                        <div style="grid-column: span 3;">
+                            <input id="accListCustomerId" type="number" placeholder="Customer Id" />
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <button class="btn primary" id="btnListAccounts"
+                                    data-endpoint="/api/customers/:customerId/accounts" data-method="GET">
+                                List accounts
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Transactions -->
+            <section id="panel-transactions" class="card tabpanel">
+                <h2>Transactions</h2>
+                <p class="desc">Execute transfers, deposits, withdrawals, and refunds via <span class="pill">/api/transactions/*</span>.</p>
+
+                <!-- Deposit -->
+                <div class="fieldset">
+                    <div class="legend">Deposit (POST /api/transactions/deposit)</div>
+                    <div class="inline-3">
+                        <div style="grid-column: span 1;">
+                            <input id="depToAccountId" type="number" placeholder="To Account Id" />
+                        </div>
+                        <div style="grid-column: span 1;">
+                            <input id="depAmount" type="number" step="0.01" placeholder="Amount" />
+                        </div>
+                        <div style="grid-column: span 1;">
+                            <button class="btn primary" id="btnDeposit"
+                                    data-endpoint="/api/transactions/deposit" data-method="POST">
+                                Make deposit
+                            </button>
+                        </div>
+                    </div>
+                    <div class="spacer"></div>
+                </div>
+
+                <!-- Withdraw -->
+                <div class="fieldset">
+                    <div class="legend">Withdraw (POST /api/transactions/withdraw)</div>
+                    <div class="inline-3">
+                        <div style="grid-column: span 1;">
+                            <input id="wdFromAccountId" type="number" placeholder="From Account Id" />
+                        </div>
+                        <div style="grid-column: span 1;">
+                            <input id="wdAmount" type="number" step="0.01" placeholder="Amount" />
+                        </div>
+                        <div style="grid-column: span 1;">
+                            <button class="btn primary" id="btnWithdraw"
+                                    data-endpoint="/api/transactions/withdraw" data-method="POST">
+                                Withdraw
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transfer -->
+                <div class="fieldset">
+                    <div class="legend">Transfer (POST /api/transactions/transfer)</div>
+                    <div class="inline-3">
+                        <div>
+                            <input id="tfFromAccountId" type="number" placeholder="From Account ID" />
+                        </div>
+                        <div>
+                            <input id="tfToAccountId" type="number" placeholder="To Account ID" />
+                        </div>
+                        <div>
+                            <input id="tfAmount" type="number" step="0.01" placeholder="Amount" />
+                        </div>
+                    </div>
+                    <div class="spacer"></div>
+                    <div class="row">
+                        <button class="btn primary" id="btnTransfer"
+                                data-endpoint="/api/transactions/transfer" data-method="POST">
+                            Transfer funds
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Refund -->
+                <div class="fieldset">
+                    <div class="legend">Refund (POST /api/transactions/refund)</div>
+                    <div class="inline-3">
+                        <div style="grid-column: span 2;">
+                            <input id="rfOriginalId" type="number" placeholder="Original Transaction Id" />
+                        </div>
+                        <div style="grid-column: span 1;">
+                            <button class="btn primary" id="btnRefund"
+                                    data-endpoint="/api/transactions/refund" data-method="POST">
+                                Request refund
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </section>
+
+    <!-- Inspector -->
+    <aside class="inspector">
+        <header>
+            <div style="font-weight:800">Inspector</div>
+        </header>
+        <div class="body">
+            <div class="kv">
+                <div class="subtle">Method</div><div id="inspMethod">—</div>
+                <div class="subtle">Endpoint</div><div id="inspEndpoint">—</div>
+                <div class="subtle">Status</div><div id="inspStatus" class="status-pill status-info">—</div>
+            </div>
+            <div class="sep"></div>
+            <div class="subtle" style="margin-bottom:6px">Payload</div>
+            <pre class="code" id="inspPayload">{}</pre>
+            <div class="subtle" style="margin:10px 0 6px">Result</div>
+            <pre class="code" id="inspResult">[]</pre>
+        </div>
+    </aside>
+</div>
+</body>
+<script>
+    // ===== Config =====
+    // If your API runs on a different origin/port, set it here, e.g. "http://localhost:8080"
+    const BASE_URL = "http://localhost:8081"; // keep empty to use same-origin relative paths
+
+    // ===== Utilities =====
+    const $ = (id) => document.getElementById(id);
+
+    const jsonPretty = (obj) => {
+        try { return JSON.stringify(obj, null, 2); }
+        catch { return String(obj); }
+    };
+
+    (function(){
+        const tabs = Array.from(document.querySelectorAll(".tabs-row .tab"));
+        const panels = Array.from(document.querySelectorAll(".tabpanel"));
+
+        function showPanel(targetId){
+            panels.forEach(p => p.classList.toggle("active", p.id === targetId));
+            tabs.forEach(t => t.classList.toggle("active", t.dataset.target === targetId));
+            // Optional: scroll to top of the work area on switch
+            document.querySelector(".work")?.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        tabs.forEach(tab => {
+            tab.addEventListener("click", () => showPanel(tab.dataset.target));
+        });
+    })();
+
+    function resolveEndpoint(template, params = {}) {
+        let ep = template;
+        Object.entries(params).forEach(([k, v]) => {
+            ep = ep.replace(`:${k}`, encodeURIComponent(v ?? ""));
+        });
+        return ep;
+    }
+
+    function statusLevel(statusLine = "") {
+        // Accept "200 OK", "404 Not Found", "Network error", "—", etc.
+        const code = parseInt(statusLine, 10);
+        if (!isFinite(code)) return statusLine.toLowerCase().includes("network") ? "error" : "info";
+        if (code >= 200 && code < 300) return "ok";
+        if (code >= 300 && code < 400) return "warn";
+        return "error"; // 4xx, 5xx
+    }
+
+    function setStatusPill(statusLine) {
+        const el = document.getElementById("inspStatus");
+        if (!el) return;
+        // strip previous status-* classes
+        el.classList.remove("status-ok","status-warn","status-error","status-info");
+        const lvl = statusLevel(statusLine);
+        el.classList.add(`status-${lvl}`);
+        el.textContent = statusLine || "—";
+    }
+
+    function setInspector({ method, endpoint, status = "—", payload = {}, result = {} }) {
+        $("inspMethod").textContent = method || "—";
+        $("inspEndpoint").textContent = endpoint || "—";
+        setStatusPill(status);
+        $("inspPayload").textContent = Object.keys(payload || {}).length ? jsonPretty(payload) : "{}";
+        $("inspResult").textContent = (typeof result === "string") ? result : jsonPretty(result);
+    }
+
+    async function doRequest({ method, endpoint, body }) {
+        const url = (BASE_URL || "") + endpoint;
+        const init = { method, headers: { "Accept": "application/json" } };
+
+        if (body && method !== "GET") {
+            init.headers["Content-Type"] = "application/json";
+            init.body = JSON.stringify(body);
+        }
+
+        let resp, data, ok;
+        try {
+            resp = await fetch(url, init);
+            ok = resp.ok;
+            const ct = resp.headers.get("content-type") || "";
+            if (ct.includes("application/json")) {
+                data = await resp.json();
+            } else {
+                data = await resp.text();
+            }
+            return { ok, statusLine: `${resp.status} ${resp.statusText}`, data };
+        } catch (err) {
+            return { ok: false, statusLine: "Network error", data: String(err) };
+        }
+    }
+
+    function withBusy(btn, fn) {
+        return async function(...args) {
+            const original = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = "Working…";
+            try { return await fn(...args); }
+            finally { btn.disabled = false; btn.textContent = original; }
+        };
+    }
+
+    // ===== Wire up: Customers =====
+    $("btnCreateCustomer").onclick = withBusy($("btnCreateCustomer"), async () => {
+        const payload = {
+            firstName: $("custFirst").value.trim(),
+            lastName:  $("custLast").value.trim(),
+        };
+        const endpoint = "/api/customers";
+        setInspector({ method: "POST", endpoint, payload });
+
+        const res = await doRequest({ method: "POST", endpoint, body: payload });
+        setInspector({ method: "POST", endpoint, status: res.statusLine, payload, result: res.data });
+    });
+
+    $("btnGetCustomer").onclick = withBusy($("btnGetCustomer"), async () => {
+        const customerId = $("custIdLookup").value.trim();
+        const endpoint = resolveEndpoint("/api/customers/:customerId", { customerId });
+        setInspector({ method: "GET", endpoint });
+
+        const res = await doRequest({ method: "GET", endpoint });
+        setInspector({ method: "GET", endpoint, status: res.statusLine, result: res.data });
+    });
+
+    $("btnListCustomers").onclick = withBusy($("btnListCustomers"), async () => {
+        const endpoint = "/api/customers";
+        setInspector({ method: "GET", endpoint });
+
+        const res = await doRequest({ method: "GET", endpoint });
+        setInspector({ method: "GET", endpoint, status: res.statusLine, result: res.data });
+    });
+
+    // ===== Wire up: Accounts =====
+    $("btnCreateAccount").onclick = withBusy($("btnCreateAccount"), async () => {
+        let customerId = $("accCustomerId").value.trim();
+        let endpoint;
+
+        if (customerId) {
+            endpoint = resolveEndpoint("/api/customers/:customerId/accounts", { customerId });
+        } else {
+            endpoint = "/api/customers/{customerId?}/accounts";
+            customerId = "{customerId?}";
+        }
+
+        const payload = {
+            accountName: $("accName").value.trim(),
+            accountType: $("accType").value.trim() || null,
+        };
+
+        setInspector({ method: "POST", endpoint, payload });
+
+        const res = await doRequest({ method: "POST", endpoint, body: payload });
+        setInspector({ method: "POST", endpoint, status: res.statusLine, payload, result: res.data });
+    });
+
+
+    $("btnGetAccount").onclick = withBusy($("btnGetAccount"), async () => {
+        const customerId = $("accLookupCustomerId").value.trim();
+        const accountId  = $("accLookupAccountId").value.trim();
+
+        if (customerId && accountId) {
+            endpoint = resolveEndpoint(
+                "/api/customers/:customerId/accounts/:accountId",
+                { customerId, accountId }
+            );
+        } else {
+            // fallback placeholder path to show clearly in Inspector
+            const cust = customerId || "{customerId?}";
+            const acc  = accountId  || "{accountId?}";
+            endpoint = `/api/customers/${cust}/accounts/${acc}`;
+        }
+        setInspector({ method: "GET", endpoint });
+
+        const res = await doRequest({ method: "GET", endpoint });
+        setInspector({ method: "GET", endpoint, status: res.statusLine, result: res.data });
+    });
+
+    $("btnListAccounts").onclick = withBusy($("btnListAccounts"), async () => {
+        const customerId = $("accListCustomerId").value.trim();
+        const endpoint = resolveEndpoint("/api/customers/:customerId/accounts", { customerId });
+        setInspector({ method: "GET", endpoint });
+
+        const res = await doRequest({ method: "GET", endpoint });
+        setInspector({ method: "GET", endpoint, status: res.statusLine, result: res.data });
+    });
+
+    // ===== Wire up: Transactions =====
+    $("btnDeposit").onclick = withBusy($("btnDeposit"), async () => {
+        const payload = {
+            toAccountId: Number($("depToAccountId").value.trim()),
+            amount:      Number($("depAmount").value.trim())
+        };
+        const endpoint = "/api/transactions/deposit";
+        setInspector({ method: "POST", endpoint, payload });
+
+        const res = await doRequest({ method: "POST", endpoint, body: payload });
+        setInspector({ method: "POST", endpoint, status: res.statusLine, payload, result: res.data });
+    });
+
+    $("btnWithdraw").onclick = withBusy($("btnWithdraw"), async () => {
+        const payload = {
+            fromAccountId: Number($("wdFromAccountId").value.trim()),
+            amount:        Number($("wdAmount").value.trim())
+        };
+        const endpoint = "/api/transactions/withdraw";
+        setInspector({ method: "POST", endpoint, payload });
+
+        const res = await doRequest({ method: "POST", endpoint, body: payload });
+        setInspector({ method: "POST", endpoint, status: res.statusLine, payload, result: res.data });
+    });
+
+    $("btnTransfer").onclick = withBusy($("btnTransfer"), async () => {
+        const payload = {
+            fromAccountId: Number($("tfFromAccountId").value.trim()),
+            toAccountId:   Number($("tfToAccountId").value.trim()),
+            amount:        Number($("tfAmount").value.trim())
+        };
+        const endpoint = "/api/transactions/transfer";
+        setInspector({ method: "POST", endpoint, payload });
+
+        const res = await doRequest({ method: "POST", endpoint, body: payload });
+        setInspector({ method: "POST", endpoint, status: res.statusLine, payload, result: res.data });
+    });
+
+    $("btnRefund").onclick = withBusy($("btnRefund"), async () => {
+        const payload = {
+            originalTransactionId: Number($("rfOriginalId").value.trim())
+        };
+        const endpoint = "/api/transactions/refund";
+        setInspector({ method: "POST", endpoint, payload });
+
+        const res = await doRequest({ method: "POST", endpoint, body: payload });
+        setInspector({ method: "POST", endpoint, status: res.statusLine, payload, result: res.data });
+    });
+</script>
+
+</html>

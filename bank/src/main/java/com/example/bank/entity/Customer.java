@@ -13,6 +13,7 @@ import java.util.Collection;
 @NoArgsConstructor
 @Entity
 public class Customer {
+
     @Id
     @GeneratedValue
     private long id;
@@ -30,4 +31,5 @@ public class Customer {
         this.accounts.add(account);
         account.setCustomer(this);
     }
+
 }

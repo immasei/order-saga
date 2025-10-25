@@ -18,7 +18,7 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-public class WithdrawRequest extends TransactionRequest {
+public class WithdrawDTO extends TransactionDTO {
 
     @NotNull(message = "Amount is required.")
     @DecimalMin(value = "0.0", inclusive = false, message = "Amount must be positive.")
