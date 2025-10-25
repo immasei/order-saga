@@ -14,7 +14,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-public class RefundRequest extends TransactionRequest {
+public class RefundDTO extends TransactionDTO {
     // more like a reversal request for any transaction type
 
     @NotNull(message = "Original transaction id is required.")

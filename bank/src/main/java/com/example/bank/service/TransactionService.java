@@ -7,35 +7,28 @@ import com.example.bank.entity.Account;
 import com.example.bank.repository.AccountRepository;
 import com.example.bank.repository.TransactionRepository;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.util.List;
 
 @Service
-public class TransactionService implements DtoMapper<Transaction, TransactionRequest, TransactionResponse> {
+@RequiredArgsConstructor
+public class TransactionService implements DtoMapper<Transaction, TransactionDTO, TransactionResponseDTO> {
+
     private final TransactionRepository transactionRepository;
     private final AccountRepository accountRepository;
     private final ModelMapper modelMapper;
 
-    @Autowired
-    public TransactionService(TransactionRepository transactionRepository,
-                              AccountRepository accountRepository,
-                              ModelMapper modelMapper) {
-        this.transactionRepository = transactionRepository;
-        this.accountRepository = accountRepository;
-        this.modelMapper = modelMapper;
-    }
-
     @Transactional
-    public TransactionResponse transfer(TransferRequest req) {
+    public TransactionResponseDTO transfer(TransferDTO transferDto) {
         List<Account> accounts = accountRepository.lockOrThrow(
-                List.of(req.getFromAccountId(), req.getToAccountId())
+            List.of(transferDto.getFromAccountId(), transferDto.getToAccountId())
         );
         Account from = accounts.get(0);
         Account to = accounts.get(1);
-        BigDecimal amount = req.getAmount();
+        BigDecimal amount = transferDto.getAmount();
 
         if (from.getBalance().compareTo(amount) < 0)
             throw new InsufficientBalanceException();
@@ -43,66 +36,66 @@ public class TransactionService implements DtoMapper<Transaction, TransactionReq
         from.modifyBalance(amount.negate());
         to.modifyBalance(amount);
 
-        Transaction tx = createAndSaveTx(from, to, req);
+        Transaction tx = createAndSaveTx(from, to, transferDto);
         return toResponse(tx);
     }
 
     @Transactional
-    public TransactionResponse deposit(DepositRequest req) {
-        Account to = accountRepository.lockOrThrow(req.getToAccountId());
-        BigDecimal amount = req.getAmount();
+    public TransactionResponseDTO deposit(DepositDTO depositDto) {
+        Account to = accountRepository.lockOrThrow(depositDto.getToAccountId());
+        BigDecimal amount = depositDto.getAmount();
         to.modifyBalance(amount);
 
-        Transaction tx = createAndSaveTx(null, to, req);
+        Transaction tx = createAndSaveTx(null, to, depositDto);
         return toResponse(tx);
     }
 
     @Transactional
-    public TransactionResponse withdraw(WithdrawRequest req) {
-        Account from = accountRepository.lockOrThrow(req.getFromAccountId());
-        BigDecimal amount = req.getAmount();
+    public TransactionResponseDTO withdraw(WithdrawDTO withdrawDto) {
+        Account from = accountRepository.lockOrThrow(withdrawDto.getFromAccountId());
+        BigDecimal amount = withdrawDto.getAmount();
 
         if (from.getBalance().compareTo(amount) < 0)
             throw new InsufficientBalanceException();
 
         from.modifyBalance(amount.negate());
-        Transaction tx = createAndSaveTx(from, null, req);
+        Transaction tx = createAndSaveTx(from, null, withdrawDto);
         return toResponse(tx);
     }
 
     @Transactional
-    public TransactionResponse refund(RefundRequest req) {
-        Transaction original = transactionRepository.getOrThrow(req.getOriginalTransactionId());
+    public TransactionResponseDTO refund(RefundDTO refundDto) {
+        Transaction original = transactionRepository.getOrThrow(refundDto.getOriginalTransactionId());
         BigDecimal amount = original.getAmount();
         Account from = original.getFromAccount();
         Account to = original.getToAccount();
 
-        TransactionResponse reversal = switch (original.getTransactionType()) {
+        TransactionResponseDTO reversal = switch (original.getTransactionType()) {
             case DEPOSIT -> {
                 // Reverse deposit = take money back out of 'to'
-                DepositRequest depositReq = modelMapper.map(original, DepositRequest.class);
+                DepositDTO depositReq = modelMapper.map(original, DepositDTO.class);
                 depositReq.setToAccountId(to.getId());
                 depositReq.setAmount(amount.negate());
 
-                TransactionResponse tx = deposit(depositReq);
+                TransactionResponseDTO tx = deposit(depositReq);
                 yield tx;
             }
             case WITHDRAWAL -> {
                 // Reverse withdrawal = put money back into 'from'
-                WithdrawRequest withdrawReq = modelMapper.map(original, WithdrawRequest.class);
+                WithdrawDTO withdrawReq = modelMapper.map(original, WithdrawDTO.class);
                 withdrawReq.setFromAccountId(from.getId());
                 withdrawReq.setAmount(amount.negate());
 
-                TransactionResponse tx = withdraw(withdrawReq);
+                TransactionResponseDTO tx = withdraw(withdrawReq);
                 yield tx;
             }
             case TRANSFER -> {
                 // Reverse transfer = transfer back (swap sides)
-                TransferRequest transferReq = modelMapper.map(original, TransferRequest.class);
+                TransferDTO transferReq = modelMapper.map(original, TransferDTO.class);
                 transferReq.setFromAccountId(to.getId());
                 transferReq.setToAccountId(from.getId());
 
-                TransactionResponse tx = transfer(transferReq);
+                TransactionResponseDTO tx = transfer(transferReq);
                 yield tx;
             }
             default -> throw new IllegalStateException("Unsupported transaction type: " + original.getTransactionType());
@@ -110,7 +103,7 @@ public class TransactionService implements DtoMapper<Transaction, TransactionReq
         };
 
         reversal.setAmount(amount);
-        reversal.setMemo(req.getMemo());
+        reversal.setMemo(refundDto.getMemo());
         original.setReversed(true);
         reversal.setReversalOf(toResponse(original));
 
@@ -121,9 +114,8 @@ public class TransactionService implements DtoMapper<Transaction, TransactionReq
         return reversal;
     }
 
-    private Transaction createAndSaveTx(Account from, Account to, TransactionRequest req) {
-        Transaction tx = toEntity(req);
-        System.out.println(tx);
+    private Transaction createAndSaveTx(Account from, Account to, TransactionDTO transactionDto) {
+        Transaction tx = toEntity(transactionDto);
         tx.setFromAccount(from);
         tx.setToAccount(to);
         tx = transactionRepository.save(tx);
@@ -133,13 +125,13 @@ public class TransactionService implements DtoMapper<Transaction, TransactionReq
     }
 
     @Override
-    public Transaction toEntity(TransactionRequest req) {
-        return modelMapper.map(req, Transaction.class);
+    public Transaction toEntity(TransactionDTO dto) {
+        return modelMapper.map(dto, Transaction.class);
     }
 
     @Override
-    public TransactionResponse toResponse(Transaction tx) {
-        TransactionResponse dto = modelMapper.map(tx, TransactionResponse.class);
+    public TransactionResponseDTO toResponse(Transaction tx) {
+        TransactionResponseDTO dto = modelMapper.map(tx, TransactionResponseDTO.class);
         return dto;
     }
 }

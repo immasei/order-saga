@@ -4,20 +4,27 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.UUID;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @Entity
 public class Account {
+
     @Id
     @GeneratedValue
-    private long id;
+    private long id; // sequential PK managed by DB
+
+//    @UuidGenerator(style = UuidGenerator.Style.TIME)
+//    @Column(nullable = false, unique = true, updatable = false, columnDefinition = "uuid")
+//    private UUID publicId; // public account id (safe to expose via apis)
 
     @ManyToOne
     @JoinColumn(nullable = false)
@@ -26,7 +33,7 @@ public class Account {
     @Column(nullable = false)
     private String accountName;
 
-    @Column(nullable = false, precision = 10, scale = 2) // 16 digits before decimal, 2 after
+    @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal balance = BigDecimal.ZERO.setScale(2);
 
     @Enumerated(EnumType.STRING)
@@ -53,4 +60,5 @@ public class Account {
     public void addOutgoingTransaction(Transaction transaction) {
         this.outgoingTransactions.add(transaction);
     }
+
 }

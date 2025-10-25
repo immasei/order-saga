@@ -1,6 +1,7 @@
 package com.example.bank.dto.transaction;
 
-import com.example.bank.dto.account.AccountResponse;
+import com.example.bank.dto.account.AccountDTO;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,14 +13,16 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class TransactionResponse {
+public class TransactionResponseDTO {
     private Long id;
     private BigDecimal amount;
     private String memo;
-    private AccountResponse fromAccount;
-    private AccountResponse toAccount;
+    private AccountDTO fromAccount;
+    private AccountDTO toAccount;
+
+    @JsonIgnore
     private LocalDateTime time;
 
-    private TransactionResponse reversalOf;
+    private TransactionResponseDTO reversalOf;
     private Boolean reversed;
 }

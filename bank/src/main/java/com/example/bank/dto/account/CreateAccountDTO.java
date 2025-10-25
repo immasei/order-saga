@@ -21,7 +21,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
-public class CreateAccountRequest {
+public class CreateAccountDTO {
 
     @NotBlank(message = "Account name cannot be blank")
     @Size(max = 200, message = "Account name is too long")
