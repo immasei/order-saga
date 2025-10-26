@@ -21,6 +21,8 @@ import static com.example.store.model.enums.UserRole.*;
 public class WebSecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final CustomAuthenticationSuccessHandler authenticationSuccessHandler;
+    private final CustomAuthenticationFailureHandler authenticationFailureHandler;
 
     private static final String[] PUBLIC_ROUTES = {
             "/error",
@@ -33,22 +35,50 @@ public class WebSecurityConfig {
             "/api/products/**",
             "/api/product-purchase-history/**",
             "/api/warehouses/**",
-            "/api/warehouse-stocks/**"
+            "/api/warehouse-stocks/**",
+            "/api/customers",
+            "/",
+            "/api/auth/**",
+            "/css/**",
+            "/js/**",
+            "/images/**",
+            "/login",
+            "/dashboard",
+            "/css/**",
+            "/js/**",
+            "/",                    // Home page
+            "/login",               // Login page
+            "/images/**",
+            "/webjars/**"
     };
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
-        // with the configuration (stateless + JWT filter),
-        // the frontend is responsible for all navigation and redirection logic.
+        // Configure both JWT and form-based authentication
         httpSecurity
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers(PUBLIC_ROUTES).permitAll()
                     .requestMatchers("/api/admins/**")
                         .hasRole(ADMIN.name())
                     .anyRequest().authenticated())
+            .formLogin(form -> form
+                    .loginPage("/login")
+                    .loginProcessingUrl("/login")
+                    .successHandler(authenticationSuccessHandler)
+                    .failureHandler(authenticationFailureHandler)
+                    .permitAll())
+            .logout(logout -> logout
+                    .logoutUrl("/logout")
+                    .logoutSuccessUrl("/login?logout=true")
+                    .invalidateHttpSession(true)
+                    .deleteCookies("refreshToken")
+                    .permitAll())
             .csrf(csrfConfig -> csrfConfig.disable())
             .sessionManagement(sessionConfig -> sessionConfig
-                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                    .maximumSessions(1)
+                    .maxSessionsPreventsLogin(false))
+            .formLogin(form -> form.disable())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return httpSecurity.build();

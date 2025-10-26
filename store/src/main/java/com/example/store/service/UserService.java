@@ -1,5 +1,6 @@
 package com.example.store.service;
 
+import com.example.store.dto.account.CreateCustomerDTO;
 import com.example.store.dto.account.SignUpDTO;
 import com.example.store.dto.account.UpdateCustomerDTO;
 import com.example.store.dto.account.UserDTO;
@@ -32,6 +33,7 @@ public class UserService implements UserDetailsService {
     // --- UserDetailsService
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        System.out.println("##########################\nusername: " + username + "\n##########################");
         return userRepository.findByEmail(username)
                 .orElseThrow(() -> new BadCredentialsException("User with email "+ username +" not found"));
     }
@@ -62,7 +64,14 @@ public class UserService implements UserDetailsService {
         newUser.setPassword(passwordEncoder.encode(signUpDto.getPassword()));
         newUser.setRole(role);
 
-        User saved = userRepository.saveAndFlush(newUser); // email uniqueness handled by db
+        // Handle additional fields for Customer
+        if (signUpDto instanceof CreateCustomerDTO createCustomerDto) {
+            Customer customer = (Customer) newUser;
+            customer.setPhone(createCustomerDto.getPhone());
+            customer.setAddress(createCustomerDto.getAddress());
+        }
+
+        User saved = userRepository.saveAndFlush(newUser);
         return toResponse(saved);
     }
 

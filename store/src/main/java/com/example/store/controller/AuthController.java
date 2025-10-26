@@ -64,10 +64,10 @@ public class AuthController {
                 .filter(cookie -> "refreshToken".equals(cookie.getName()))
                 .findFirst()
                 .map(Cookie::getValue)
-                .orElseThrow(() -> new AuthenticationServiceException("Refresh token not found in cookies"));
+                .orElseThrow(() -> new AuthenticationServiceException("No cookies found in request. Please login."));
 
-        // generate a new access token
-        // we dont rotate refresh token
+        // Generate a new access token
+        // We don't rotate refresh token
         LoginResponseDTO loginResponseDto = authService.refreshToken(refreshToken);
         return ResponseEntity.ok(loginResponseDto);
     }
