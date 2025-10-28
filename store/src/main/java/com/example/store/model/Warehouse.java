@@ -9,31 +9,23 @@ import java.util.UUID;
 @NoArgsConstructor
 @Getter
 @Setter
+@Table(
+    name = "warehouses",
+    indexes = @Index(name = "idx_warehouse_code", columnList = "warehouseCode", unique = true)
+)
 public class Warehouse {
 
     @Id
     @GeneratedValue
     private UUID id;
 
-    @Column(name = "name", length = 100, nullable = false)
-    private String name;
+    @Column(length = 20, nullable = false, unique = true)
+    private String warehouseCode; // ie SYD-01
 
-    @Column(name = "location", length = 100)
+    @Column(length = 100, nullable = false)
+    private String warehouseName;
+
+    @Column(length = 100, nullable = false)
     private String location;
 
-    // Constructor
-    public Warehouse(String name, String location) {
-        this.name = name;
-        this.location = location;
-    }
-
-    // Debugging method
-    @Override
-    public String toString() {
-        return "Warehouse{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", location='" + location + '\'' +
-                '}';
-    }
 }

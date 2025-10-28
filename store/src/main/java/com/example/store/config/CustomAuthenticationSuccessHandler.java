@@ -1,7 +1,7 @@
 package com.example.store.config;
 
 import com.example.store.dto.account.LoginResponseDTO;
-import com.example.store.model.account.User;
+import com.example.store.model.User;
 import com.example.store.service.UserService;
 import com.example.store.service.JwtService;
 import jakarta.servlet.ServletException;

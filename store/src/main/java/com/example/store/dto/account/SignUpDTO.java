@@ -1,6 +1,6 @@
 package com.example.store.dto.account;
 
-import com.example.store.model.enums.UserRole;
+import com.example.store.enums.UserRole;
 import com.example.store.validation.ValidEnum;
 import jakarta.validation.constraints.*;
 import lombok.Getter;

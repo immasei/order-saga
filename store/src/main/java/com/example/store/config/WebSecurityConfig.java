@@ -12,7 +12,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import static com.example.store.model.enums.UserRole.*;
+import static com.example.store.enums.UserRole.*;
 
 @Configuration
 @EnableWebSecurity
@@ -27,18 +27,18 @@ public class WebSecurityConfig {
     private static final String[] PUBLIC_ROUTES = {
             "/error",
             "/api/auth/**",
+            "/api/customers",
+            "/api/products/**",
+            "/api/warehouses/**",
+            "/api/stocks/**",
+
             "/api/auditlogs/**",
             "/api/delivery/**",
             "/api/inbox/**",
             "/api/orders/**",
             "/api/outbox/**",
-            "/api/products/**",
             "/api/product-purchase-history/**",
-            "/api/warehouses/**",
-            "/api/warehouse-stocks/**",
-            "/api/customers",
             "/",
-            "/api/auth/**",
             "/css/**",
             "/js/**",
             "/images/**",

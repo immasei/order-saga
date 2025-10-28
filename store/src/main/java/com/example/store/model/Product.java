@@ -1,48 +1,44 @@
 package com.example.store.model;
 
+import com.github.f4b6a3.ulid.UlidCreator;
 import jakarta.persistence.*;
+
+import java.math.BigDecimal;
 import java.util.UUID;
 import lombok.*;
 import lombok.NoArgsConstructor;
-
-
-import java.util.ArrayList;
-import java.util.Collection;
 
 @Entity
 @NoArgsConstructor
 @Getter
 @Setter
+@Table(
+    name = "products",
+    indexes = @Index(name = "idx_product_code", columnList = "product_code", unique = true)
+)
 public class Product {
 
     @Id
     @GeneratedValue
     private UUID id;
 
-    @Column(name = "name", length = 200, nullable = false)
-    private String name;
+    @Column(length = 30, unique = true, nullable = false, updatable = false)
+    private String productCode;
 
-    @Column(name = "description", columnDefinition = "TEXT")
+    @Column(length = 200, nullable = false)
+    private String productName;
+
+    @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "price", nullable = false)
-    private long price;
+    @Column(nullable = false, precision = 15, scale = 2)
+    private BigDecimal price;
 
-    public Product(UUID id, String name, String description, long priceCents) {
-        this.id = id;
-        this.name = name;
-        this.description = description;
-        this.price = priceCents;
+    @PrePersist
+    private void generateProductCode() {
+        if (this.productCode == null) {
+            this.productCode = "PRD-" + UlidCreator.getMonotonicUlid().toString();
+        }
     }
 
-    //  Method for debugging
-    @Override
-    public String toString() {
-        return "Product{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", description='" + description + '\'' +
-                ", priceCents=" + price +
-                '}';
-    }
 }

@@ -1,8 +1,8 @@
 package com.example.store.repository;
 
 import com.example.store.exception.ResourceNotFoundException;
-import com.example.store.model.account.User;
-import com.example.store.model.enums.UserRole;
+import com.example.store.model.User;
+import com.example.store.enums.UserRole;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

@@ -2,8 +2,9 @@ package com.example.store.controller;
 
 import com.example.store.dto.account.CreateAdminDTO;
 import com.example.store.dto.account.UserDTO;
-import com.example.store.model.enums.UserRole;
+import com.example.store.enums.UserRole;
 import com.example.store.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +26,7 @@ public class AdminController {
 
     // Create a new user
     @PostMapping
-    public ResponseEntity<UserDTO> createAdmin(@RequestBody CreateAdminDTO adminDto) {
+    public ResponseEntity<UserDTO> createAdmin(@RequestBody @Valid CreateAdminDTO adminDto) {
         UserDTO admin = userService.createUser(adminDto);
         return new ResponseEntity<>(admin, HttpStatus.CREATED);
     }

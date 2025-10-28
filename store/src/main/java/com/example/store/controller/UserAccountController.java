@@ -1,6 +1,6 @@
 //package com.example.store.controller;
 //
-//import com.example.store.model.account.User;
+//import com.example.store.model.User;
 //import com.example.store.service.UserAccountService;
 //import org.springframework.beans.factory.annotation.Autowired;
 //import org.springframework.http.HttpStatus;

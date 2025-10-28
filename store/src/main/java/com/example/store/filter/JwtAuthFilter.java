@@ -1,6 +1,6 @@
 package com.example.store.filter;
 
-import com.example.store.model.account.User;
+import com.example.store.model.User;
 import com.example.store.service.JwtService;
 import com.example.store.service.UserService;
 import jakarta.servlet.FilterChain;
@@ -36,15 +36,29 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private static final String[] PUBLIC_ROUTES = {
             "/error",
             "/api/auth/**",
+            "/api/customers",
+            "/api/products/**",
+            "/api/warehouses/**",
+            "/api/stocks/**",
+
             "/api/auditlogs/**",
             "/api/delivery/**",
             "/api/inbox/**",
             "/api/orders/**",
             "/api/outbox/**",
-            "/api/products/**",
             "/api/product-purchase-history/**",
-            "/api/warehouses/**",
-            "/api/warehouse-stocks/**"
+            "/",
+            "/css/**",
+            "/js/**",
+            "/images/**",
+            "/login",
+            "/dashboard",
+            "/css/**",
+            "/js/**",
+            "/",                    // Home page
+            "/login",               // Login page
+            "/images/**",
+            "/webjars/**"
     };
 
     private boolean isPublic(HttpServletRequest request) {

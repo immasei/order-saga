@@ -1,6 +1,6 @@
 package com.example.store.security;
 
-import com.example.store.model.account.User;
+import com.example.store.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;

@@ -1,6 +1,6 @@
 //package com.example.store.repository;
 //
-//import com.example.store.model.account.Admin;
+//import com.example.store.model.Admin;
 //import org.springframework.data.jpa.repository.JpaRepository;
 //import org.springframework.stereotype.Repository;
 //

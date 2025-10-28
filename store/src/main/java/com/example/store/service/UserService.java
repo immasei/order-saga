@@ -1,14 +1,13 @@
 package com.example.store.service;
 
-import com.example.store.dto.account.CreateCustomerDTO;
 import com.example.store.dto.account.SignUpDTO;
 import com.example.store.dto.account.UpdateCustomerDTO;
 import com.example.store.dto.account.UserDTO;
 import jakarta.transaction.Transactional;
-import com.example.store.model.account.Admin;
-import com.example.store.model.account.Customer;
-import com.example.store.model.account.User;
-import com.example.store.model.enums.UserRole;
+import com.example.store.model.Admin;
+import com.example.store.model.Customer;
+import com.example.store.model.User;
+import com.example.store.enums.UserRole;
 import com.example.store.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
@@ -64,14 +63,7 @@ public class UserService implements UserDetailsService {
         newUser.setPassword(passwordEncoder.encode(signUpDto.getPassword()));
         newUser.setRole(role);
 
-        // Handle additional fields for Customer
-        if (signUpDto instanceof CreateCustomerDTO createCustomerDto) {
-            Customer customer = (Customer) newUser;
-            customer.setPhone(createCustomerDto.getPhone());
-            customer.setAddress(createCustomerDto.getAddress());
-        }
-
-        User saved = userRepository.saveAndFlush(newUser);
+        User saved = userRepository.saveAndFlush(newUser); // let db enforce email uniqueness
         return toResponse(saved);
     }
 
