@@ -24,6 +24,11 @@ public class GlobalExceptionHandler {
                 .body(ApiError.of(status, msg, req.getRequestURI(), sub));
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiError> illegalArgument(IllegalArgumentException ex, HttpServletRequest req) {
+        return respond(HttpStatus.BAD_REQUEST, ex.getMessage(), req, null);
+    }
+
     // 404
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiError> notFound(ResourceNotFoundException ex, HttpServletRequest req) {
@@ -59,9 +64,9 @@ public class GlobalExceptionHandler {
     // 409/400 (DB constraint violations)
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiError> dataIntegrity(DataIntegrityViolationException ex, HttpServletRequest req) {
-        if (isUkUsersEmail(ex)) {
-            return respond(HttpStatus.CONFLICT, "Email is already in use", req, null);
-        }
+//        if (isUkUsersEmail(ex)) {
+//            return respond(HttpStatus.CONFLICT, "Email is already in use", req, null);
+//        }
         // Fallback: generic constraint error with most specific message as subError
         String mostSpecific = ex.getMostSpecificCause() == null ? null : ex.getMostSpecificCause().getMessage();
         return respond(HttpStatus.BAD_REQUEST, "Constraint violation", req,

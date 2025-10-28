@@ -1,0 +1,16 @@
+-- -- 1) Minimal referenced tables so FKs can be created safely (override by jpa later)
+-- CREATE TABLE IF NOT EXISTS products (id UUID PRIMARY KEY);
+--
+-- CREATE TABLE IF NOT EXISTS warehouses (id UUID PRIMARY KEY);
+--
+-- -- 2) Partitioned parent table to match Stock entity
+-- CREATE TABLE IF NOT EXISTS warehouse_stock (
+--                                                warehouse_id UUID NOT NULL REFERENCES warehouses(id),
+--     product_id  UUID NOT NULL REFERENCES products(id),
+--     on_hand INT NOT NULL,
+--     reserved INT NOT NULL,
+--     CONSTRAINT warehouse_stock_pk PRIMARY KEY (warehouse_id, product_id)
+--     ) PARTITION BY LIST (warehouse_id);
+--
+-- CREATE INDEX IF NOT EXISTS idx_ws_product ON warehouse_stock (product_id);
+-- CREATE INDEX IF NOT EXISTS idx_ws_wh      ON warehouse_stock (warehouse_id);

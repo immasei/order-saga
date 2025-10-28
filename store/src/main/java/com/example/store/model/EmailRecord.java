@@ -19,7 +19,7 @@
 //
 //    @ManyToOne(fetch = FetchType.LAZY)
 //    @JoinColumn(name = "order_id", referencedColumnName = "id", nullable = false)
-//    private CustomerOrder order;
+//    private Order order;
 //
 //    @Column(name = "to_address", length = 255, nullable = false)
 //    private String toAddress;  // Email recipient address
@@ -31,7 +31,7 @@
 //    private java.time.LocalDateTime createdAt;  // Timestamp when the email was created
 //
 //    // Constructor
-//    public EmailRecord(CustomerOrder order, String toAddress, String status, java.time.LocalDateTime createdAt) {
+//    public EmailRecord(Order order, String toAddress, String status, java.time.LocalDateTime createdAt) {
 //        this.order = order;
 //        this.toAddress = toAddress;
 //        this.status = status;

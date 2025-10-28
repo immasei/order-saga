@@ -1,6 +1,6 @@
 //package com.example.store.service;
 //
-//import com.example.store.model.account.Admin;
+//import com.example.store.model.Admin;
 //import com.example.store.repository.AdminRepository;
 //import org.springframework.beans.factory.annotation.Autowired;
 //import org.springframework.stereotype.Service;

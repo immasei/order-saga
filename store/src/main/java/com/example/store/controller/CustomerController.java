@@ -3,7 +3,7 @@ package com.example.store.controller;
 import com.example.store.dto.account.CreateCustomerDTO;
 import com.example.store.dto.account.UpdateCustomerDTO;
 import com.example.store.dto.account.UserDTO;
-import com.example.store.model.enums.UserRole;
+import com.example.store.enums.UserRole;
 import com.example.store.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +37,7 @@ public class CustomerController {
     // Create a new user (admin only)
 //    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping
-    public ResponseEntity<UserDTO> createCustomer(@RequestBody CreateCustomerDTO customerDto) {
+    public ResponseEntity<UserDTO> createCustomer(@RequestBody @Valid CreateCustomerDTO customerDto) {
         UserDTO customer = userService.createUser(customerDto);
         return new ResponseEntity<>(customer, HttpStatus.CREATED);
     }

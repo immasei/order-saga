@@ -1,6 +1,6 @@
 //package com.example.store.model;
 //
-//import com.example.store.model.enums.TransactionType;
+//import com.example.store.common.TransactionType;
 //import jakarta.persistence.*;
 //import lombok.*;
 //
@@ -18,7 +18,7 @@
 //
 //    @ManyToOne(fetch = FetchType.LAZY)
 //    @JoinColumn(name = "order_id", referencedColumnName = "id", nullable = false)
-//    private CustomerOrder order;
+//    private Order order;
 //
 //    @Column(name = "request_id", length = 100, unique = true, nullable = false)
 //    private String requestId;  // Unique request identifier for the transaction
@@ -40,7 +40,7 @@
 //    private TransactionType transactionType;  // Enum type (e.g., 'REFUND', 'SALE', etc.)
 //
 //    // Constructor
-//    public TransactionRecord(CustomerOrder order, String requestId, String status, long amount,
+//    public TransactionRecord(Order order, String requestId, String status, long amount,
 //                             java.time.LocalDateTime createdAt, java.time.LocalDateTime updatedAt, TransactionType transactionType) {
 //        this.order = order;
 //        this.requestId = requestId;

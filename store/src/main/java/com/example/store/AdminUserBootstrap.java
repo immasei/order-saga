@@ -1,8 +1,8 @@
 package com.example.store;
 
-import com.example.store.model.account.Admin;
-import com.example.store.model.account.User;
-import com.example.store.model.enums.UserRole;
+import com.example.store.model.Admin;
+import com.example.store.model.User;
+import com.example.store.enums.UserRole;
 import com.example.store.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
