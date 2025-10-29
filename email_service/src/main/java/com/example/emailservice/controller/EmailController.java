@@ -44,9 +44,9 @@ public class EmailController {
     @GetMapping
     public ResponseEntity<List<EmailMessage>> listByQuery(@RequestParam(name = "to", required = false) String to) {
         if (to == null || to.isBlank()) {
-            return ResponseEntity.ok(emailMessageRepository.findAll());
+            return ResponseEntity.ok(emailMessageRepository.findAllByOrderByCreatedAtAsc());
         }
-        return ResponseEntity.ok(emailMessageRepository.findByToAddress(to));
+        return ResponseEntity.ok(emailMessageRepository.findByToAddressOrderByCreatedAtAsc(to));
     }
 
     // Simple SSE stream placeholder that polls new emails every few seconds
@@ -55,18 +55,23 @@ public class EmailController {
         SseEmitter emitter = new SseEmitter(0L);
         new Thread(() -> {
             try {
-                List<EmailMessage> last = to == null ? emailMessageRepository.findAll() : emailMessageRepository.findByToAddress(to);
-                int lastCount = last.size();
-                emitter.send(SseEmitter.event().name("init").data(last));
+                List<EmailMessage> snapshot = to == null
+                        ? emailMessageRepository.findAllByOrderByCreatedAtAsc()
+                        : emailMessageRepository.findByToAddressOrderByCreatedAtAsc(to);
+                // Let client render initial list via REST; we just prime the seen set here.
+                java.util.Set<java.util.UUID> sentIds = new java.util.HashSet<>();
+                for (EmailMessage m : snapshot) sentIds.add(m.getId());
+                emitter.send(SseEmitter.event().name("init").data(java.util.Collections.emptyList()));
                 while (true) {
-                    Thread.sleep(3000);
-                    List<EmailMessage> now = to == null ? emailMessageRepository.findAll() : emailMessageRepository.findByToAddress(to);
-                    if (now.size() > lastCount) {
-                        List<EmailMessage> delta = now.subList(lastCount, now.size());
-                        for (EmailMessage m : delta) {
+                    Thread.sleep(2000);
+                    List<EmailMessage> now = to == null
+                            ? emailMessageRepository.findAllByOrderByCreatedAtAsc()
+                            : emailMessageRepository.findByToAddressOrderByCreatedAtAsc(to);
+                    for (EmailMessage m : now) {
+                        if (!sentIds.contains(m.getId())) {
                             emitter.send(SseEmitter.event().name("message").data(m));
+                            sentIds.add(m.getId());
                         }
-                        lastCount = now.size();
                     }
                 }
             } catch (Exception ex) {

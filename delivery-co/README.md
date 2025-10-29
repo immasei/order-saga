@@ -41,9 +41,62 @@ DeliveryCo is a Spring Boot microservice responsible for orchestrating the lifec
 - Build: `gradle clean build`
 - Run: `gradle bootRun`
 
+### End-to-end: run DeliveryCo + EmailService
+
+1) Start infrastructure (Kafka, ZooKeeper, Postgres, pgAdmin)
+- `cd delivery-co`
+- `docker compose up -d`
+
+2) Run DeliveryCo
+- `cd delivery-co`
+- `./gradlew bootRun`
+
+3) Run EmailService (uses the same Postgres by default)
+- `cd email_service`
+- `gradle bootRun`
+
+4) Open the demo inbox UI
+- Go to `http://localhost:8081`
+- Enter `demo@customer.local` and click “Load”
+
+5) Trigger a delivery
+- `curl -X POST http://localhost:8080/api/deliveries -H 'Content-Type: application/json' -d '{
+  "externalOrderId":"ORD-DEMO-UI",
+  "customerId":"C-DEMO",
+  "pickupWarehouseId":"WH-1",
+  "pickupAddress":"1 Warehouse Way",
+  "dropoffAddress":"22 Customer St",
+  "contactEmail":"demo@customer.local",
+  "lossRate":0.05,
+  "items":[{"sku":"SKU-1","description":"Widget","quantity":1}]
+}'`
+
+You should see at most one email per status transition (RECEIVED, PICKED_UP, IN_TRANSIT, DELIVERED or LOST). Reloading still shows one per status because the database enforces de-duplication.
+
+Notes:
+- If you want a fresh inbox for demos, clear the `email_message` table or change the externalOrderId.
+- If you run EmailService against H2 in-memory for a quick demo, add env overrides; Flyway V1/V2 also support H2.
+
 ## Integration Guide
 
 DeliveryCo exposes both synchronous and asynchronous entry points so other services can request deliveries and track progress.
+
+### Email Service + UI (How we wired it up)
+
+We ship a separate `email_service` Spring Boot app that consumes `delivery.status` events and shows a tiny inbox UI (SSE + simple HTML) for demo purposes. Key implementation choices and fixes:
+
+- Idempotent emails: DB-level unique index ensures one email per (to_address, external_order_id, message_type). Code also checks before insert.
+- Contact email propagation: DeliveryCo includes `payload.contactEmail` in every status event so EmailService knows where to send.
+- JSON type headers off: DeliveryCo producer disables `spring.json.add.type.headers` so cross-service deserialization works without class headers.
+- Frontend live updates: SSE stream emits each email ID once; client de-dupes by ID to avoid duplicates on reconnect or re-order.
+
+Files in email_service:
+- `email_service/src/main/resources/db/migration/V1__create_email_tables.sql` – creates `email_message` table.
+- `email_service/src/main/resources/db/migration/V2__add_unique_email_constraint.sql` – enforces one email per status per order (unique index).
+- `email_service/src/main/resources/application.properties` – defaults to the same Postgres as DeliveryCo Compose (jdbc:postgresql://localhost:15432/deliveryco, user `deliveryco`, password `changeme`).
+- `email_service/src/main/java/com/example/emailservice/messaging/DeliveryStatusListener.java` – normalizes addresses and de-dupes before saving.
+- `email_service/src/main/java/com/example/emailservice/controller/EmailController.java` – REST APIs + SSE stream that only emits unseen email IDs.
+- `email_service/src/main/resources/static/app.js` – client-side de-dupe and single EventSource instance.
 
 ### REST API
 
