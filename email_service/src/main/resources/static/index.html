@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EmailService Inbox</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; }
+    #toolbar { margin-bottom: 16px; }
+    #messages { display: grid; gap: 8px; }
+    .msg { border: 1px solid #ddd; border-radius: 6px; padding: 12px; }
+    .sub { font-weight: 600; }
+    .meta { color: #666; font-size: 12px; }
+  </style>
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <h1>EmailService Inbox</h1>
+  <div id="toolbar">
+    <input id="to" size="40" placeholder="email address (e.g. demo@customer.local)" />
+    <button id="load">Load</button>
+  </div>
+  <div id="messages"></div>
+</body>
+</html>
+
