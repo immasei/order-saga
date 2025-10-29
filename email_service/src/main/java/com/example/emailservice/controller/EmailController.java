@@ -3,7 +3,9 @@ package com.example.emailservice.controller;
 import com.example.emailservice.model.EmailMessage;
 import com.example.emailservice.repository.EmailMessageRepository;
 import com.example.emailservice.service.EmailSender;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -34,26 +36,68 @@ public class EmailController {
 		return ResponseEntity.ok(emailMessageRepository.findByOrderId(orderId));
 	}
 
-	@GetMapping("/toaddress/{toAddress}")
-	public ResponseEntity<List<EmailMessage>> getByToAddress(@PathVariable String toAddress) {
-		return ResponseEntity.ok(emailMessageRepository.findByToAddress(toAddress));
-	}
+    @GetMapping("/toaddress/{toAddress}")
+    public ResponseEntity<List<EmailMessage>> getByToAddress(@PathVariable String toAddress) {
+        return ResponseEntity.ok(emailMessageRepository.findByToAddress(toAddress));
+    }
 
-	@PostMapping("/send")
-	public ResponseEntity<EmailMessage> sendEmail(@RequestBody EmailMessage request) {
-		// Need to specify orderId specifically with the 36 char UUID within strings.
-		EmailMessage toPersist = EmailMessage.builder()
-				.orderId(request.getOrderId())
-				.toAddress(request.getToAddress())
-				.subject(request.getSubject())
-				.body(request.getBody())
-				.status("QUEUED")
-				.createdAt(LocalDateTime.now())
-				.build();
-		EmailMessage saved = emailMessageRepository.save(toPersist);
-		EmailMessage sent = emailSender.send(saved);
-		return ResponseEntity.ok(sent);
-	}
+    @GetMapping
+    public ResponseEntity<List<EmailMessage>> listByQuery(@RequestParam(name = "to", required = false) String to) {
+        if (to == null || to.isBlank()) {
+            return ResponseEntity.ok(emailMessageRepository.findAllByOrderByCreatedAtAsc());
+        }
+        return ResponseEntity.ok(emailMessageRepository.findByToAddressOrderByCreatedAtAsc(to));
+    }
+
+    // Simple SSE stream placeholder that polls new emails every few seconds
+    @GetMapping(path = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter stream(@RequestParam(name = "to", required = false) String to) {
+        SseEmitter emitter = new SseEmitter(0L);
+        new Thread(() -> {
+            try {
+                List<EmailMessage> snapshot = to == null
+                        ? emailMessageRepository.findAllByOrderByCreatedAtAsc()
+                        : emailMessageRepository.findByToAddressOrderByCreatedAtAsc(to);
+                // Let client render initial list via REST; we just prime the seen set here.
+                java.util.Set<java.util.UUID> sentIds = new java.util.HashSet<>();
+                for (EmailMessage m : snapshot) sentIds.add(m.getId());
+                emitter.send(SseEmitter.event().name("init").data(java.util.Collections.emptyList()));
+                while (true) {
+                    Thread.sleep(2000);
+                    List<EmailMessage> now = to == null
+                            ? emailMessageRepository.findAllByOrderByCreatedAtAsc()
+                            : emailMessageRepository.findByToAddressOrderByCreatedAtAsc(to);
+                    for (EmailMessage m : now) {
+                        if (!sentIds.contains(m.getId())) {
+                            emitter.send(SseEmitter.event().name("message").data(m));
+                            sentIds.add(m.getId());
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                emitter.completeWithError(ex);
+            }
+        }).start();
+        return emitter;
+    }
+
+    @PostMapping("/send")
+    public ResponseEntity<EmailMessage> sendEmail(@RequestBody EmailMessage request) {
+        // Need to specify orderId specifically with the 36 char UUID within strings.
+        EmailMessage toPersist = EmailMessage.builder()
+                .orderId(request.getOrderId())
+                .toAddress(request.getToAddress())
+                .externalOrderId(request.getExternalOrderId())
+                .subject(request.getSubject())
+                .body(request.getBody())
+                .status("QUEUED")
+                .messageType(request.getMessageType())
+                .createdAt(LocalDateTime.now())
+                .build();
+        EmailMessage saved = emailMessageRepository.save(toPersist);
+        EmailMessage sent = emailSender.send(saved);
+        return ResponseEntity.ok(sent);
+    }
 
 	@PutMapping("/{id}/status")
 	public ResponseEntity<EmailMessage> updateStatus(@PathVariable UUID id, @RequestParam String status) {
@@ -64,5 +108,3 @@ public class EmailController {
 		return ResponseEntity.ok(emailMessageRepository.save(msg));
 	}
 }
-
-
