@@ -61,7 +61,8 @@ CREATE TABLE IF NOT EXISTS public.orders (
     sub_total        numeric(15,2) NOT NULL,
     tax              numeric(15,2) NOT NULL,
     total            numeric(15,2) NOT NULL,
-    customer_id      uuid          NOT NULL
+    customer_id      uuid          NOT NULL,
+    idempotency_key  varchar(80)    NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.order_item (

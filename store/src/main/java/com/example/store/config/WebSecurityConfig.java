@@ -27,15 +27,15 @@ public class WebSecurityConfig {
     private static final String[] PUBLIC_ROUTES = {
             "/error",
             "/api/auth/**",
-            "/api/customers",
+            "/api/customers/**",
             "/api/products/**",
             "/api/warehouses/**",
             "/api/stocks/**",
+            "/api/orders/**",
 
             "/api/auditlogs/**",
             "/api/delivery/**",
             "/api/inbox/**",
-            "/api/orders/**",
             "/api/outbox/**",
             "/api/product-purchase-history/**",
             "/",

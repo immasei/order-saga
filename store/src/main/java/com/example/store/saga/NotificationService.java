@@ -1,4 +1,4 @@
-package com.example.store.service;
+package com.example.store.saga;
 
 public class NotificationService {
 }
