@@ -1,9 +1,8 @@
 package com.example.store.controller;
 
-import com.example.store.dto.inventory.ProductDTO;
 import com.example.store.dto.order.CreateOrderDTO;
 import com.example.store.dto.order.OrderDTO;
-import com.example.store.saga.OrderSagaOrchestrator;
+import com.example.store.kafka.saga.OrderHandler;
 import com.example.store.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,20 +11,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
 public class OrderController {
 
-    private final OrderSagaOrchestrator sagaOrchestrator;
     private final OrderService orderService;
+    private final OrderHandler orderHandler;
 
     // Create a new order
     @PostMapping
     public ResponseEntity<OrderDTO> createOrder(@RequestBody @Valid CreateOrderDTO orderDto) {
-        OrderDTO order = sagaOrchestrator.placeOrder(orderDto);
+        OrderDTO order = orderHandler.placeOrder(orderDto);
         return new ResponseEntity<>(order, HttpStatus.CREATED);
     }
 

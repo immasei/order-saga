@@ -1,31 +1,29 @@
 package com.example.store.config;
 
-import jakarta.annotation.PostConstruct;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.admin.NewTopic;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 @Configuration
-@ConfigurationProperties(prefix = "app.kafka")
-@Getter
-@Setter
+@RequiredArgsConstructor
 public class KafkaTopicConfig {
 
-    private Map<String, String> topics;
-    private int partitions;
-    private short replicas;
+    private final KafkaTopicProperties props;
 
     @Bean
     public List<NewTopic> kafkaTopics() {
-        return topics.values().stream()
-                .map(t -> new NewTopic(t, partitions, replicas))
-                .toList();
+        return props.getTopics().values().stream()
+            .flatMap(base ->
+                List.of(
+                    new NewTopic(base + ".commands", props.getPartitions(), props.getReplicas()),
+                    new NewTopic(base + ".events", props.getPartitions(), props.getReplicas())
+                ).stream()
+            )
+            .collect(Collectors.toList());
     }
 
 }

@@ -45,14 +45,14 @@ CREATE TABLE IF NOT EXISTS public.warehouses (
 
 -- Parent is partitioned by warehouse_id
 CREATE TABLE IF NOT EXISTS public.warehouse_stock (
-    warehouse_id uuid NOT NULL,
-    product_id   uuid NOT NULL,
+    warehouse_id uuid    NOT NULL,
+    product_id   uuid    NOT NULL,
     on_hand      integer NOT NULL,
     reserved     integer NOT NULL
 ) PARTITION BY LIST (warehouse_id);
 
 CREATE TABLE IF NOT EXISTS public.orders (
-    id              uuid           NOT NULL,
+    id               uuid          NOT NULL,
     delivery_address varchar(255)  NOT NULL,
     order_number     varchar(30)   NOT NULL,
     placed_at        timestamp(6)  NOT NULL,
@@ -84,6 +84,18 @@ CREATE TABLE IF NOT EXISTS public.payments (
     provider_txn_id  varchar(30)    NOT NULL,
     refunded_total   numeric(15,2)  NOT NULL,
     status           varchar(20)    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS public.outbox (
+    id uuid NOT NULL,
+    aggregate_id     varchar(30)   NOT NULL,
+    aggregate_type   varchar(50)   NOT NULL,
+    event_type       varchar(50)   NOT NULL,
+    topic            varchar(50)   NOT NULL,
+    payload          jsonb         NOT NULL,
+    status           varchar(20)   NOT NULL,
+    attempts         integer       NOT NULL,
+    created_at       timestamp(6)  NOT NULL
 );
 
 -- ======================
