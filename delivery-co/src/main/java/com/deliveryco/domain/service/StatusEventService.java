@@ -10,6 +10,7 @@ import com.deliveryco.repository.DeliveryStatusEventRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,13 @@ public class StatusEventService {
             Map<String, Object> payload
     ) {
         OffsetDateTime now = OffsetDateTime.now();
+        Map<String, Object> enrichedPayload = new HashMap<>();
+        if (order.getContactEmail() != null && !order.getContactEmail().isBlank()) {
+            enrichedPayload.put("contactEmail", order.getContactEmail());
+        }
+        if (payload != null && !payload.isEmpty()) {
+            enrichedPayload.putAll(payload);
+        }
         UUID eventId = UUID.randomUUID();
         UUID correlationId = UUID.randomUUID();
         DeliveryStatusEventEntity event = DeliveryStatusEventEntity.builder()
@@ -51,7 +59,7 @@ public class StatusEventService {
                 .correlationId(correlationId)
                 .status(status)
                 .reason(reason)
-                .payload(writePayload(payload))
+                .payload(writePayload(enrichedPayload))
                 .occurredAt(now)
                 .build();
         order.setCurrentStatus(status);
@@ -64,7 +72,7 @@ public class StatusEventService {
         }
 
         DeliveryStatusEventEntity savedEvent = statusEventRepository.save(event);
-        String messageJson = buildMessageJson(order, savedEvent, payload);
+        String messageJson = buildMessageJson(order, savedEvent, enrichedPayload);
         DeliveryOutboxEntity outbox = DeliveryOutboxEntity.builder()
                 .id(UUID.randomUUID())
                 .deliveryOrder(order)
