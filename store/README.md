@@ -17,6 +17,9 @@
    docker compose down
    ```
 
+- visit pgadmin http://localhost:5050
+- visit kafkaui http://localhost:6060
+
 ### saga & kafka & outbox
 - see `kafka/` folder
 - saga orchestrator only listen to `event/` and create outbox records for `command/`
