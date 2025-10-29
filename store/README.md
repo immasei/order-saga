@@ -1,5 +1,38 @@
 # STORE API README
 
+## latest update (10:00 am thu 30)
+### Docker: kafka and postgre
+ - turn on 
+    ```
+    docker compose up -d 
+    ```
+
+ - turn off
+    ```
+    docker compose stop
+    ```
+    
+ - remove
+   ```
+   docker compose down
+   ```
+
+### saga & kafka & outbox
+- see `kafka/` folder
+- saga orchestrator only listen to `event/` and create outbox records for `command/`
+- other handlers only listen to `command/` and create outbox records for `event/`
+- `OutboxPublisher` will be scheduled to kafka.send outbox records.
+- try create order you should see some warning logs.
+   
+### Note
+
+>Note: if you change/add new @Entity, please drop the store db, create a new on in pgadmin, then
+>  - Option 1 (current): update the schema(s) in resources/db/migration/V1_init.sql. its because i set ddl-auto to validate, which means jpa wont create/alter the schema, it just validate.
+>
+>  - Option 2: set to ddl-auto to update, may have some error messages about constraint already created, but it runs fine
+
+---
+
 ## Overview
 
 This project implements a **store management system** using Spring Boot. It includes:
@@ -12,13 +45,6 @@ Polymorphism and inheritance are used to generalize behavior:
 - **Warehouse → warehouse_stock_{warehouseCode}**
   - `Warehouse` holds generic warehouse information
   - `warehouse_stock_{warehouseCode}` extend the concept to track **stock per warehouse**, enabling polymorphic handling of warehouse inventory
-
----
-
->Note: if you change/add new @Entity, please drop the store db, create a new on in pgadmin, then
->  - Option 1 (current): update the schema(s) in resources/db/migration/v1_init.sql. its because i set ddl-auto to validate, which means jpa wont create/alter the schema, it just validate.
->
->  - Option 2: replace v1_init.sql content with resources/v1_init.txt, set ddl-auto in application.yml to update. it will show "error" like fk has been created etc, but those errors wont crash the app.
 
 ---
 

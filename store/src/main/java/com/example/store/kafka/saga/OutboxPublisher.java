@@ -42,13 +42,9 @@ public class OutboxPublisher {
                 Class<?> clazz = Class.forName(fqcn);
                 Object payload = objectMapper.readValue(json, clazz);
 
-                var result = kafka.send(topic, key, payload).get();
-
+                kafka.send(topic, key, payload).get();
                 outboxRepository.markSent(row.getId());
-                log.info("Outbox SENT id={} topic={} partition={} offset={}",
-                        row.getId(), topic,
-                        result.getRecordMetadata().partition(),
-                        result.getRecordMetadata().offset());
+                log.info("Outbox SENT topic={}", topic);
             } catch (Exception ex) {
                 outboxRepository.markFailed(row.getId());
                 log.error("Outbox FAILED id={} err={}", row.getId(), ex.toString(), ex);
