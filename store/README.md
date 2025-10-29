@@ -259,19 +259,9 @@ Polymorphism and inheritance are used to generalize behavior:
     ```
 - **Note**: `warehouseCode` is case sensitive
 
-#### Get stocks of 1 warehouse
-- **GET**
-    ```
-    http://localhost:8080/api/warehouses/{warehouseCode}/stocks
-    ```
-    ```
-    http://localhost:8080/api/warehouses/SYD-02/stocks
-    ```
-- **Note**: `warehouseCode` is case sensitive
-
 ### 5. Warehouse Stock Management
 
-#### Add/Update Stock of 1 product to 1 warehouse (case sensitive)
+#### Add/Update Stock of 1 product to 1 warehouse
 
 - **POST**
     ```
@@ -333,10 +323,71 @@ Polymorphism and inheritance are used to generalize behavior:
 - **Note**:
   - `productCode` is case sensitve
 
-### 6. Order Management
-#### Create Product
-- pending
+#### Get stocks of 1 warehouse
+- **GET**
+    ```
+    http://localhost:8080/api/warehouses/{warehouseCode}/stocks
+    ```
+    ```
+    http://localhost:8080/api/warehouses/SYD-02/stocks
+    ```
+- **Note**:
+  - `warehouseCode` is case sensitive
 
+### 6. Order Management
+#### Create Order
+
+- **POST**
+    ```
+    http://localhost:8080/api/orders
+    ```
+    ```json
+    {
+      "customerId": "2439f2f3-01d6-46bf-9933-f8e5b48778f4",
+      "deliveryAddress": "Rockdale 2216",
+      "shipping": 45,
+      "orderItems": [
+        {
+          "productCode": "PRD-01K8QE83388P0HSE45E4378SXT",
+          "quantity": 2
+        },
+        {
+          "productCode": "PRD-01K8QE83388P0HSE45E4378SXV",
+          "quantity": 3
+        }
+      ]
+    }
+    ```
+- **Body**={`CreateOrderDTO`, List<`CreateOrderItemDTO`>}
+- **Note**:
+  - `deliveryAddress` is optional, if not provided use Customer.address (saved when create account)
+  - `productCode` is case sensitive
+
+#### Get order by order number
+- **GET**
+    ```
+    http://localhost:8080/api/orders/{orderNumber}
+    ```
+    ```
+    http://localhost:8080/api/orders/ORD-01K8QGFHNXF1H8T345WFJJZZ6X
+    ```
+- **Note**:
+  - `orderNumber` is case sensitive
+
+#### Get all orders
+- **GET**
+    ```
+    http://localhost:8080/api/orders
+    ```
+
+#### Get all orders of 1 customer
+- **GET**
+    ```
+    http://localhost:8080/api/customers/{customerId}/orders
+    ```
+    ```
+    http://localhost:8080/api/customers/2439f2f3-01d6-46bf-9933-f8e5b48778f4/orders
+    ```
 
 ### Polymorphism & Inheritance Notes
 - User → Customer / Admin

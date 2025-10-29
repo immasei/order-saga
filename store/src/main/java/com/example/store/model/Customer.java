@@ -11,6 +11,7 @@ import lombok.*;
 @Getter
 @Setter
 @NoArgsConstructor
+@ToString(callSuper = true)
 public class Customer extends User {
 
     @Column(length = 30)

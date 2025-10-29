@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
     name = "products",
     indexes = @Index(name = "idx_product_code", columnList = "product_code", unique = true)
 )
+@ToString
 public class Product {
 
     @Id
