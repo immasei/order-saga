@@ -30,7 +30,9 @@
   async function load() {
     const to = toInput.value.trim();
     const url = to ? `/api/emails?to=${encodeURIComponent(to)}` : '/api/emails';
-    const res = await fetch(url);
+
+    const res = await fetch(url, { cache: 'no-store' });
+
     const data = await res.json();
     render(data);
     startStream();
@@ -50,4 +52,10 @@
   }
 
   loadBtn.addEventListener('click', load);
+
+
+  // auto-load on first open for convenience
+  document.addEventListener('DOMContentLoaded', load);
 })();
+
+

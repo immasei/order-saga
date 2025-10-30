@@ -6,8 +6,13 @@ import com.example.emailservice.repository.EmailMessageRepository;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Value;
+
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -18,7 +23,7 @@ public class DeliveryStatusListener {
 
     private final EmailMessageRepository emailMessageRepository;
 
-    // default address used until DeliveryCo includes contactEmail in status events
+
     @Value("${email.default-to:demo@customer.local}")
     private String defaultToAddress;
 
@@ -30,7 +35,7 @@ public class DeliveryStatusListener {
         String subject = subjectFor(msg.status());
         String body = bodyFor(msg);
 
-        // Deduplicate: one email per (toAddress, externalOrderId, status)
+
         if (emailMessageRepository.existsByToAddressAndExternalOrderIdAndMessageType(to, msg.externalOrderId(), msg.status())) {
             log.info("[EmailService] Skipping duplicate email for {} order {} status {}", to, msg.externalOrderId(), msg.status());
             return;
@@ -51,9 +56,10 @@ public class DeliveryStatusListener {
             emailMessageRepository.save(email);
             log.info("[EmailService] Saved email to {} for status {} order {}", to, msg.status(), msg.externalOrderId());
         } catch (DataIntegrityViolationException e) {
-            // Another consumer instance or race condition inserted the record first; treat as deduped
-            log.info("[EmailService] Duplicate detected by DB constraint for {} order {} status {} — skipped",
-                    to, msg.externalOrderId(), msg.status());
+
+            log.info("[EmailService] Duplicate detected by DB constraint for {} order {} status {} — skipped", to, msg.externalOrderId(), msg.status());
+
+
         }
     }
 
@@ -65,8 +71,10 @@ public class DeliveryStatusListener {
 
     private String normalizeToAddress(String to) {
         if (to == null) return null;
-        String norm = to.trim().toLowerCase();
-        return norm;
+
+        return to.trim().toLowerCase();
+
+
     }
 
     private String subjectFor(String status) {
@@ -89,3 +97,4 @@ public class DeliveryStatusListener {
         };
     }
 }
+
