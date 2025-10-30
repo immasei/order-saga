@@ -28,6 +28,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.kafka:spring-kafka'
+	implementation 'org.flywaydb:flyway-core'
+	implementation 'org.flywaydb:flyway-database-postgresql:11.7.2'
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'
@@ -38,5 +41,3 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
-
-

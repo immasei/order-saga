@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Email Inbox</title>
+  <style>
+    body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; }
+    .row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+    input[type="email"] { padding: 8px; width: 320px; }
+    button { padding: 8px 12px; cursor: pointer; }
+    #messages { display: flex; flex-direction: column-reverse; gap: 10px; }
+    .msg { border: 1px solid #ddd; border-radius: 8px; padding: 10px; }
+    .sub { font-weight: 600; margin-bottom: 6px; }
+    .meta { color: #666; font-size: 12px; margin-top: 6px; }
+  </style>
+  <script defer src="/app.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(location.search);
+      const to = params.get('to');
+      if (to) document.getElementById('to').value = to;
+    });
+  </script>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+</head>
+<body>
+  <h2>Email Inbox</h2>
+  <div class="row">
+    <label for="to">To:</label>
+    <input id="to" type="email" placeholder="demo@customer.local" />
+    <button id="load">Load</button>
+  </div>
+  <div id="messages"></div>
+</body>
+</html>
+

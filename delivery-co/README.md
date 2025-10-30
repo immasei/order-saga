@@ -161,3 +161,65 @@ Flyway migrations create tables for orders, items, status history, durable jobs,
 - Add authentication by enabling Spring Security (e.g., JWT) on REST and Kafka channels.
 - Customize loss probabilities or job timing via `deliveryco.scheduler.*` properties.
 - Extend the outbox publisher to include Schema Registry or Avro payloads if required by downstream consumers.
+
+## Email Service + UI
+
+We include a companion `email_service` app that consumes `delivery.status` events and renders a minimal inbox UI (SSE) for demos.
+
+How it’s implemented
+- Producer settings: DeliveryCo disables JSON type headers to simplify cross-service consumption.
+- Payload enrichment: every status event includes `payload.contactEmail` so the EmailService knows where to send.
+- Idempotency: EmailService stores one email per `(toAddress, externalOrderId, messageType)` using a unique index and code-level pre-check. Email addresses are normalized to lower-case trimmed.
+- UI: `http://localhost:8081` serves a static inbox that live-updates via SSE and de-dupes by email row ID.
+- Schema isolation: DeliveryCo migrates in schema `public`; EmailService migrates in schema `email` and uses `flyway_schema_history_email`.
+
+Run both services locally
+1) Start infra (Kafka, ZooKeeper, Postgres, pgAdmin)
+- `cd delivery-co`
+- `docker compose up -d`
+
+2) Start DeliveryCo
+- `./gradlew bootRun`
+
+3) Start EmailService
+- `cd ../email_service`
+- `gradle bootRun`
+
+4) Open the inbox UI
+- Visit `http://localhost:8081`
+- Enter `demo@customer.local` and click “Load”
+
+5) Trigger a delivery
+```bash
+curl -X POST http://localhost:8080/api/deliveries \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "externalOrderId":"ORD-DEMO-UI",
+    "customerId":"C-DEMO",
+    "pickupWarehouseId":"WH-1",
+    "pickupAddress":"1 Warehouse Way",
+    "dropoffAddress":"22 Customer St",
+    "contactEmail":"demo@customer.local",
+    "lossRate":0.05,
+    "items":[{"sku":"SKU-1","description":"Widget","quantity":1}]
+  }'
+```
+
+Expected result
+- One email per status transition (RECEIVED, PICKED_UP, IN_TRANSIT, DELIVERED or LOST) appears live; reloading still shows one per status.
+
+### Troubleshooting
+- DeliveryCo Flyway conflicts after manual DB changes
+  - Clean reset: terminate sessions and recreate DB `deliveryco`:
+    - `docker compose -f delivery-co/docker-compose.yml exec -T postgres psql -U deliveryco -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='deliveryco';"`
+    - `docker compose -f delivery-co/docker-compose.yml exec -T postgres psql -U deliveryco -d postgres -c "DROP DATABASE IF EXISTS deliveryco; CREATE DATABASE deliveryco;"`
+  - Or drop DeliveryCo tables:
+    - `docker compose -f delivery-co/docker-compose.yml exec -T postgres psql -U deliveryco -d deliveryco -c "DROP TABLE IF EXISTS delivery_item, delivery_status_event, delivery_job, delivery_outbox, delivery_incident, delivery_worker_heartbeat, delivery_order CASCADE;"`
+- EmailService 404 on UI or APIs
+  - Ensure EmailService runs on 8081 and static files exist under `email_service/src/main/resources/static`.
+- EmailService Flyway checksum mismatch
+  - Dev-only repair bean updates checksums on startup. For strict validation, remove it and drop schema `email`:
+    - `docker compose -f delivery-co/docker-compose.yml exec -T postgres psql -U deliveryco -d deliveryco -c "DROP SCHEMA IF EXISTS email CASCADE; CREATE SCHEMA email;"`
+- No emails arriving
+  - Check Kafka messages: `docker compose -f delivery-co/docker-compose.yml exec kafka kafka-console-consumer --topic delivery.status --bootstrap-server localhost:19092 --from-beginning`
+  - Ensure the UI email matches the `contactEmail` you send.

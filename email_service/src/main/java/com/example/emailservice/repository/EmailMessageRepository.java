@@ -12,6 +12,11 @@ public interface EmailMessageRepository extends JpaRepository<EmailMessage, UUID
 	List<EmailMessage> findByOrderId(UUID orderId);
 
 	List<EmailMessage> findByToAddress(String toAddress);
-}
 
+	// Ordered queries for deterministic streams
+	List<EmailMessage> findByToAddressOrderByCreatedAtAsc(String toAddress);
+	List<EmailMessage> findAllByOrderByCreatedAtAsc();
+
+	boolean existsByToAddressAndExternalOrderIdAndMessageType(String toAddress, String externalOrderId, String messageType);
+}
 
