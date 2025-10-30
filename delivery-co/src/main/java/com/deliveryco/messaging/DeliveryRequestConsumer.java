@@ -27,8 +27,8 @@ public class DeliveryRequestConsumer {
         DeliveryRequest request = new DeliveryRequest(
                 message.externalOrderId(),
                 message.customerId(),
-                message.pickupWarehouseId(),
-                message.pickupAddress(),
+                null, // removed in API; multiple warehouses supported via pickupLocations
+                null,
                 message.dropoffAddress(),
                 message.contactEmail(),
                 message.lossRate(),
@@ -37,9 +37,11 @@ public class DeliveryRequestConsumer {
         orderLifecycleService.registerDeliveryRequest(request);
     }
 
-    private List<DeliveryRequestItem> mapItems(List<DeliveryRequestMessage.DeliveryRequestItemMessage> items) {
-        return items.stream()
-                .map(item -> new DeliveryRequestItem(item.sku(), item.description(), item.quantity()))
+    private List<DeliveryRequestItem> mapItems(java.util.Map<String, java.util.Map<String, Integer>> itemsByWarehouse) {
+        if (itemsByWarehouse == null || itemsByWarehouse.isEmpty()) return java.util.List.of();
+        return itemsByWarehouse.values().stream()
+                .flatMap(productMap -> productMap.entrySet().stream()
+                        .map(e -> new DeliveryRequestItem(e.getKey(), null, e.getValue())))
                 .toList();
     }
 }

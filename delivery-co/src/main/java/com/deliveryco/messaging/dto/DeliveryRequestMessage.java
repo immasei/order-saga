@@ -1,23 +1,16 @@
 package com.deliveryco.messaging.dto;
 
-import java.util.List;
+import java.util.Map;
 
 public record DeliveryRequestMessage(
         String externalOrderId,
         String customerId,
-        String pickupWarehouseId,
-        String pickupAddress,
+        // Map of warehouseId -> pickupAddress
+        Map<String, String> pickupLocations,
         String dropoffAddress,
         String contactEmail,
         double lossRate,
-        List<DeliveryRequestItemMessage> items
+        // Map of warehouseCode -> (productId -> quantity)
+        Map<String, Map<String, Integer>> items
 ) {
-
-    public record DeliveryRequestItemMessage(
-            String sku,
-            String description,
-            int quantity
-    ) {
-    }
 }
-

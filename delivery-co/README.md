@@ -59,16 +59,15 @@ DeliveryCo is a Spring Boot microservice responsible for orchestrating the lifec
 - Go to `http://localhost:8081`
 - Enter `demo@customer.local` and click “Load”
 
-5) Trigger a delivery
+5) Trigger a delivery (new request shape with multiple pickups)
 - `curl -X POST http://localhost:8080/api/deliveries -H 'Content-Type: application/json' -d '{
   "externalOrderId":"ORD-DEMO-UI",
   "customerId":"C-DEMO",
-  "pickupWarehouseId":"WH-1",
-  "pickupAddress":"1 Warehouse Way",
+  "pickupLocations": { "WH-1":"1 Warehouse Way", "WH-2":"22 Secondary Rd" },
   "dropoffAddress":"22 Customer St",
   "contactEmail":"demo@customer.local",
   "lossRate":0.05,
-  "items":[{"sku":"SKU-1","description":"Widget","quantity":1}]
+  "items": { "WH-1": {"SKU-1":1}, "WH-2": {"SKU-2":3} }
 }'`
 
 You should see at most one email per status transition (RECEIVED, PICKED_UP, IN_TRANSIT, DELIVERED or LOST). Reloading still shows one per status because the database enforces de-duplication.
@@ -108,14 +107,17 @@ Files in email_service:
 {
   "externalOrderId": "ORD-1234",
   "customerId": "C-1",
-  "pickupWarehouseId": "WH-9",
-  "pickupAddress": "1 Warehouse Way",
+  "pickupLocations": {
+    "WH-1": "1 Warehouse Way",
+    "WH-2": "22 Secondary Rd"
+  },
   "dropoffAddress": "77 Client Road",
   "contactEmail": "customer@example.com",
   "lossRate": 0.05,
-  "items": [
-    { "sku": "SKU-1", "description": "Widget", "quantity": 2 }
-  ]
+  "items": {
+    "WH-1": { "SKU-1": 2, "SKU-2": 1 },
+    "WH-2": { "SKU-3": 5 }
+  }
 }
 ```
 
@@ -147,14 +149,17 @@ DeliveryCo supports asynchronous integration using Kafka topics defined in `appl
 {
   "externalOrderId": "ORD-1234",
   "customerId": "C-1",
-  "pickupWarehouseId": "WH-9",
-  "pickupAddress": "1 Warehouse Way",
+  "pickupLocations": {
+    "WH-1": "1 Warehouse Way",
+    "WH-2": "22 Secondary Rd"
+  },
   "dropoffAddress": "77 Client Road",
   "contactEmail": "customer@example.com",
   "lossRate": 0.05,
-  "items": [
-    { "sku": "SKU-1", "description": "Widget", "quantity": 2 }
-  ]
+  "items": {
+    "WH-1": { "SKU-1": 2, "SKU-2": 1 },
+    "WH-2": { "SKU-3": 5 }
+  }
 }
 ```
 
