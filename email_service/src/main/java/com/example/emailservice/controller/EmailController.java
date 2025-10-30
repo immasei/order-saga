@@ -36,10 +36,10 @@ public class EmailController {
 		return ResponseEntity.ok(emailMessageRepository.findByOrderId(orderId));
 	}
 
-	@GetMapping("/toaddress/{toAddress}")
-	public ResponseEntity<List<EmailMessage>> getByToAddress(@PathVariable String toAddress) {
-		return ResponseEntity.ok(emailMessageRepository.findByToAddress(toAddress));
-	}
+    @GetMapping("/toaddress/{toAddress}")
+    public ResponseEntity<List<EmailMessage>> getByToAddress(@PathVariable String toAddress) {
+        return ResponseEntity.ok(emailMessageRepository.findByToAddress(toAddress));
+    }
 
     @GetMapping
     public ResponseEntity<List<EmailMessage>> listByQuery(@RequestParam(name = "to", required = false) String to) {
@@ -49,7 +49,9 @@ public class EmailController {
         return ResponseEntity.ok(emailMessageRepository.findByToAddressOrderByCreatedAtAsc(to));
     }
 
+
     // Simple SSE stream that emits only unseen messages
+
     @GetMapping(path = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@RequestParam(name = "to", required = false) String to) {
         SseEmitter emitter = new SseEmitter(0L);
@@ -58,6 +60,7 @@ public class EmailController {
                 List<EmailMessage> snapshot = to == null
                         ? emailMessageRepository.findAllByOrderByCreatedAtAsc()
                         : emailMessageRepository.findByToAddressOrderByCreatedAtAsc(to);
+
                 java.util.Set<java.util.UUID> sentIds = new java.util.HashSet<>();
                 for (EmailMessage m : snapshot) sentIds.add(m.getId());
                 emitter.send(SseEmitter.event().name("init").data(java.util.Collections.emptyList()));
@@ -80,6 +83,7 @@ public class EmailController {
         return emitter;
     }
 
+
 	@PostMapping("/send")
 	public ResponseEntity<EmailMessage> sendEmail(@RequestBody EmailMessage request) {
 		// Need to specify orderId specifically with the 36 char UUID within strings.
@@ -97,6 +101,7 @@ public class EmailController {
 		EmailMessage sent = emailSender.send(saved);
 		return ResponseEntity.ok(sent);
 	}
+
 
 	@PutMapping("/{id}/status")
 	public ResponseEntity<EmailMessage> updateStatus(@PathVariable UUID id, @RequestParam String status) {

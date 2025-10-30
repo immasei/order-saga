@@ -3,7 +3,9 @@ package com.example.store.controller;
 import com.example.store.dto.account.CreateCustomerDTO;
 import com.example.store.dto.account.UpdateCustomerDTO;
 import com.example.store.dto.account.UserDTO;
+import com.example.store.dto.order.OrderDTO;
 import com.example.store.enums.UserRole;
+import com.example.store.service.OrderService;
 import com.example.store.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,11 +27,12 @@ import java.util.UUID;
 public class CustomerController {
 
     private final UserService userService;
+    private final OrderService orderService;
 
     // Get customer by ID (admin or the customer themselves)
-    @PreAuthorize("hasRole('ADMIN') or @customerSecurity.isAccountOwner(#id)")
+//    @PreAuthorize("hasRole('ADMIN') or @customerSecurity.isAccountOwner(#id)")
     @GetMapping("/{id}")
-    public ResponseEntity<UserDTO> getUserById(@PathVariable UUID id) {
+    public ResponseEntity<UserDTO> getCustomerById(@PathVariable UUID id) {
         UserDTO customer = userService.getUserByIdAndRole(id, UserRole.CUSTOMER);
         return ResponseEntity.ok(customer);
     }
@@ -43,7 +46,7 @@ public class CustomerController {
     }
 
     // Update customer details (admin or the customer themselves)
-    @PreAuthorize("hasRole('ADMIN') or @customerSecurity.isAccountOwner(#id)")
+//    @PreAuthorize("hasRole('ADMIN') or @customerSecurity.isAccountOwner(#id)")
     @PatchMapping(path = "/{id}")
     public ResponseEntity<UserDTO> updateCustomer(
         @PathVariable UUID id, @RequestBody @Valid UpdateCustomerDTO customerDto
@@ -53,7 +56,7 @@ public class CustomerController {
     }
 
     // Delete customer by ID (admin or the customer themselves)
-    @PreAuthorize("hasRole('ADMIN') or @customerSecurity.isAccountOwner(#id)")
+//    @PreAuthorize("hasRole('ADMIN') or @customerSecurity.isAccountOwner(#id)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
         userService.deleteUserById(id);
@@ -61,11 +64,18 @@ public class CustomerController {
     }
 
     // Get all customers (admin only)
-    @PreAuthorize("hasRole('ADMIN')")
+//    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<List<UserDTO>> getAllCustomers() {
         List<UserDTO> customers = userService.getUsersByRole(UserRole.CUSTOMER);
         return new ResponseEntity<>(customers, HttpStatus.OK);
+    }
+
+    // Get all orders of 1 customer
+    @GetMapping("/{customerId}/orders")
+    public ResponseEntity<List<OrderDTO>> getOrdersByCustomer(@PathVariable UUID customerId) {
+        List<OrderDTO> orders = orderService.getOrdersByCustomerId(customerId);
+        return ResponseEntity.ok(orders);
     }
 
 }

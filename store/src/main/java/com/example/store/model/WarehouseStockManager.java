@@ -7,8 +7,8 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 
 /**
- * ALTER TABLE warehouse_stock
- * PARTITION BY LIST (warehouse_id);
+ * Utility component for managing PostgreSQL table partitions dynamically.
+ * This does not perform any data manipulation — only DDL for warehouse partitioning.
  */
 
 @Component

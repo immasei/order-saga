@@ -1,5 +1,41 @@
 # STORE API README
 
+## latest update (10:00 am thu 30)
+### Docker: kafka and postgre
+ - turn on 
+    ```
+    docker compose up -d 
+    ```
+
+ - turn off
+    ```
+    docker compose stop
+    ```
+    
+ - remove
+   ```
+   docker compose down
+   ```
+
+- visit pgadmin http://localhost:5050
+- visit kafkaui http://localhost:6060
+
+### saga & kafka & outbox
+- see `kafka/` folder
+- saga orchestrator only listen to `event/` and create outbox records for `command/`
+- other handlers only listen to `command/` and create outbox records for `event/`
+- `OutboxPublisher` will be scheduled to kafka.send outbox records.
+- try create order you should see some warning logs.
+   
+### Note
+
+>Note: if you change/add new @Entity, please drop the store db, create a new on in pgadmin, then
+>  - Option 1 (current): update the schema(s) in resources/db/migration/V1_init.sql. its because i set ddl-auto to validate, which means jpa wont create/alter the schema, it just validate.
+>
+>  - Option 2: set to ddl-auto to update, may have some error messages about constraint already created, but it runs fine
+
+---
+
 ## Overview
 
 This project implements a **store management system** using Spring Boot. It includes:
@@ -12,13 +48,6 @@ Polymorphism and inheritance are used to generalize behavior:
 - **Warehouse → warehouse_stock_{warehouseCode}**
   - `Warehouse` holds generic warehouse information
   - `warehouse_stock_{warehouseCode}` extend the concept to track **stock per warehouse**, enabling polymorphic handling of warehouse inventory
-
----
-
->Note: if you change/add new @Entity, please drop the store db, create a new on in pgadmin, then
->  - Option 1 (current): update the schema(s) in resources/db/migration/v1_init.sql. its because i set ddl-auto to validate, which means jpa wont create/alter the schema, it just validate.
->
->  - Option 2: replace v1_init.sql content with resources/v1_init.txt, set ddl-auto in application.yml to update. it will show "error" like fk has been created etc, but those errors wont crash the app.
 
 ---
 
@@ -259,19 +288,9 @@ Polymorphism and inheritance are used to generalize behavior:
     ```
 - **Note**: `warehouseCode` is case sensitive
 
-#### Get stocks of 1 warehouse
-- **GET**
-    ```
-    http://localhost:8080/api/warehouses/{warehouseCode}/stocks
-    ```
-    ```
-    http://localhost:8080/api/warehouses/SYD-02/stocks
-    ```
-- **Note**: `warehouseCode` is case sensitive
-
 ### 5. Warehouse Stock Management
 
-#### Add/Update Stock of 1 product to 1 warehouse (case sensitive)
+#### Add/Update Stock of 1 product to 1 warehouse
 
 - **POST**
     ```
@@ -333,10 +352,71 @@ Polymorphism and inheritance are used to generalize behavior:
 - **Note**:
   - `productCode` is case sensitve
 
-### 6. Order Management
-#### Create Product
-- pending
+#### Get stocks of 1 warehouse
+- **GET**
+    ```
+    http://localhost:8080/api/warehouses/{warehouseCode}/stocks
+    ```
+    ```
+    http://localhost:8080/api/warehouses/SYD-02/stocks
+    ```
+- **Note**:
+  - `warehouseCode` is case sensitive
 
+### 6. Order Management
+#### Create Order
+
+- **POST**
+    ```
+    http://localhost:8080/api/orders
+    ```
+    ```json
+    {
+      "customerId": "2439f2f3-01d6-46bf-9933-f8e5b48778f4",
+      "deliveryAddress": "Rockdale 2216",
+      "shipping": 45,
+      "orderItems": [
+        {
+          "productCode": "PRD-01K8QE83388P0HSE45E4378SXT",
+          "quantity": 2
+        },
+        {
+          "productCode": "PRD-01K8QE83388P0HSE45E4378SXV",
+          "quantity": 3
+        }
+      ]
+    }
+    ```
+- **Body**={`CreateOrderDTO`, List<`CreateOrderItemDTO`>}
+- **Note**:
+  - `deliveryAddress` is optional, if not provided use Customer.address (saved when create account)
+  - `productCode` is case sensitive
+
+#### Get order by order number
+- **GET**
+    ```
+    http://localhost:8080/api/orders/{orderNumber}
+    ```
+    ```
+    http://localhost:8080/api/orders/ORD-01K8QGFHNXF1H8T345WFJJZZ6X
+    ```
+- **Note**:
+  - `orderNumber` is case sensitive
+
+#### Get all orders
+- **GET**
+    ```
+    http://localhost:8080/api/orders
+    ```
+
+#### Get all orders of 1 customer
+- **GET**
+    ```
+    http://localhost:8080/api/customers/{customerId}/orders
+    ```
+    ```
+    http://localhost:8080/api/customers/2439f2f3-01d6-46bf-9933-f8e5b48778f4/orders
+    ```
 
 ### Polymorphism & Inheritance Notes
 - User → Customer / Admin

@@ -22,6 +22,7 @@ import java.util.UUID;
     name = "orders",
     indexes = @Index(name = "idx_orders_order_number", columnList = "order_number", unique = true)
 )
+@ToString
 public class Order {
 
     @Id
@@ -33,7 +34,7 @@ public class Order {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(nullable = false, updatable = false)
-    private Customer customer;
+    private User customer;
 
     @Column(nullable = false, length = 255, updatable = false)
     private String deliveryAddress;
@@ -58,6 +59,9 @@ public class Order {
     @CreationTimestamp
     private LocalDateTime placedAt;
 
+    @Column(length=80, nullable=false, updatable=false)
+    private String idempotencyKey;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems = new ArrayList<>();
 
@@ -65,6 +69,7 @@ public class Order {
     private void onCreate() {
         generateOrderNumber();
         computeSubTotal();
+        computeTax();
         computeTotal();
     }
 
@@ -74,6 +79,17 @@ public class Order {
                 .add(shipping)
                 .add(tax)
                 .setScale(2, java.math.RoundingMode.HALF_UP);
+    }
+
+    private void computeTax() {
+        final BigDecimal TAX_RATE = new BigDecimal("0.10");
+        if (subTotal == null) {
+            this.tax = BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+            return;
+        }
+        this.tax = subTotal
+                .multiply(TAX_RATE)
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private void computeSubTotal() {

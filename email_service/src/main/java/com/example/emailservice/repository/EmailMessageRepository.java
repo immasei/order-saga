@@ -17,6 +17,10 @@ public interface EmailMessageRepository extends JpaRepository<EmailMessage, UUID
 	List<EmailMessage> findByToAddressOrderByCreatedAtAsc(String toAddress);
 	List<EmailMessage> findAllByOrderByCreatedAtAsc();
 
+
 	boolean existsByToAddressAndExternalOrderIdAndMessageType(String toAddress, String externalOrderId, String messageType);
 }
 
+
+	boolean existsByToAddressAndExternalOrderIdAndMessageType(String toAddress, String externalOrderId, String messageType);
+}

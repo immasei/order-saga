@@ -16,20 +16,18 @@ public class CreateOrderDTO {
     @NotNull
     private UUID customerId;
 
-    @NotBlank(message = "Delivery address is required")
+    // if not provided, will use customer address (saved during create account)
+    // @NotBlank(message = "Delivery address is required")
     @Size(max = 255, message = "Delivery address is too long")
     private String deliveryAddress;
 
-    @NotNull(message = "Subtotal is required.")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Subtotal must be positive.")
+    @NotNull(message = "Shipping fee is required.")
+    @DecimalMin(value = "0.0", inclusive = false, message = "Shipping fee must be positive.")
+    @Digits(integer = 13, fraction = 2, message = "Shipping fee must have at most 13 digits and 2 decimal places")
     private BigDecimal shipping;
-
-    @NotNull(message = "Subtotal is required.")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Subtotal must be positive.")
-    private BigDecimal tax;
 
     @Valid
     @NotEmpty
-    List<OrderItemDTO> orderItems;
+    List<CreateOrderItemDTO> orderItems;
 
 }

@@ -6,8 +6,13 @@ import com.example.emailservice.repository.EmailMessageRepository;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
+
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.factory.annotation.Value;
+
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -18,15 +23,18 @@ public class DeliveryStatusListener {
 
     private final EmailMessageRepository emailMessageRepository;
 
+
     @Value("${email.default-to:demo@customer.local}")
     private String defaultToAddress;
 
     @KafkaListener(topics = "${email.topics.status}")
     public void onStatus(DeliveryStatusMessage msg) {
         if (msg == null) return;
+
         String to = normalizeToAddress(extractToAddress(msg));
         String subject = subjectFor(msg.status());
         String body = bodyFor(msg);
+
 
         if (emailMessageRepository.existsByToAddressAndExternalOrderIdAndMessageType(to, msg.externalOrderId(), msg.status())) {
             log.info("[EmailService] Skipping duplicate email for {} order {} status {}", to, msg.externalOrderId(), msg.status());
@@ -48,7 +56,10 @@ public class DeliveryStatusListener {
             emailMessageRepository.save(email);
             log.info("[EmailService] Saved email to {} for status {} order {}", to, msg.status(), msg.externalOrderId());
         } catch (DataIntegrityViolationException e) {
+
             log.info("[EmailService] Duplicate detected by DB constraint for {} order {} status {} — skipped", to, msg.externalOrderId(), msg.status());
+
+
         }
     }
 
@@ -60,7 +71,10 @@ public class DeliveryStatusListener {
 
     private String normalizeToAddress(String to) {
         if (to == null) return null;
+
         return to.trim().toLowerCase();
+
+
     }
 
     private String subjectFor(String status) {
