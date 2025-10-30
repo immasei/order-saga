@@ -2,16 +2,25 @@ package com.example.store.service;
 
 import com.example.store.dto.inventory.AssignStockDTO;
 import com.example.store.dto.inventory.CreateWarehouseDTO;
+import com.example.store.dto.inventory.InventoryAllocationDTO;
+import com.example.store.dto.inventory.InventoryRequestItem;
 import com.example.store.dto.inventory.StockDTO;
 import com.example.store.dto.inventory.WarehouseDTO;
+import com.example.store.enums.ReservationStatus;
+import com.example.store.exception.InsufficientStockException;
+import com.example.store.exception.ResourceNotFoundException;
+import com.example.store.model.InventoryReservation;
+import com.example.store.model.InventoryReservationItem;
 import com.example.store.model.Product;
 import com.example.store.model.Stock;
 import com.example.store.model.Warehouse;
 import com.example.store.model.WarehouseStockManager;
 import com.example.store.repository.ProductRepository;
-import com.example.store.repository.WarehouseRepository;
 import com.example.store.repository.StockRepository;
+import com.example.store.repository.WarehouseRepository;
+import com.example.store.repository.InventoryReservationRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
 import jakarta.transaction.Transactional;
@@ -21,11 +30,13 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class WarehouseService {
 
     private final WarehouseRepository warehouseRepository;
     private final ProductRepository productRepository;
     private final StockRepository stockRepository;
+    private final InventoryReservationRepository reservationRepository;
     private final WarehouseStockManager manager;
     private final ModelMapper modelMapper;
 
@@ -190,6 +201,178 @@ public class WarehouseService {
                 .toList();
     }
 
+    // === Reservation APIs (saga entry points) ===
+
+    @Transactional
+    public InventoryAllocationDTO reserveInventory(String orderNumber,
+                                                   String idempotencyKey,
+                                                   List<InventoryRequestItem> requestItems) {
+
+        Map<String, Integer> required = normaliseRequest(requestItems);
+        if (required.isEmpty()) {
+            throw new IllegalArgumentException("At least one item is required to reserve inventory");
+        }
+
+        InventoryReservation existing = reservationRepository.findByOrderNumber(orderNumber).orElse(null);
+        if (existing != null) {
+            if (!Objects.equals(existing.getIdempotencyKey(), idempotencyKey)
+                    && existing.getStatus() == ReservationStatus.RESERVED) {
+                throw new IllegalStateException("Idempotency conflict for order " + orderNumber);
+            }
+
+            if (existing.getStatus() == ReservationStatus.RESERVED
+                    || existing.getStatus() == ReservationStatus.COMMITTED
+                    || existing.getStatus() == ReservationStatus.RELEASED) {
+                log.debug("Inventory already processed for order={} status={} - returning cached plan",
+                        orderNumber, existing.getStatus());
+                return toAllocationDto(existing);
+            }
+        }
+
+        productRepository.findAllByProductCodeInOrThrow(required.keySet());
+
+        List<Stock> stocks = stockRepository.findAllByProductCodesForUpdate(required.keySet());
+        Map<String, List<Stock>> stocksByProduct = stocks.stream()
+                .collect(Collectors.groupingBy(s -> s.getProduct().getProductCode()));
+
+        List<InsufficientStockException.MissingItem> missing = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : required.entrySet()) {
+            String productCode = entry.getKey();
+            int needed = entry.getValue();
+
+            int available = stocksByProduct.getOrDefault(productCode, List.of())
+                    .stream()
+                    .mapToInt(stock -> stock.getOnHand() - stock.getReserved())
+                    .sum();
+
+            if (available < needed) {
+                missing.add(new InsufficientStockException.MissingItem(productCode, needed, available));
+            }
+        }
+
+        if (!missing.isEmpty()) {
+            throw new InsufficientStockException("Not enough stock to fulfill order " + orderNumber, missing);
+        }
+
+        Map<Stock, Integer> availableByStock = new HashMap<>();
+        for (Stock stock : stocks) {
+            availableByStock.put(stock, stock.getOnHand() - stock.getReserved());
+        }
+
+        AllocationComputation computation = trySingleWarehouse(required, stocksByProduct, availableByStock)
+                .orElseGet(() -> allocateAcrossWarehouses(required, stocksByProduct, availableByStock));
+
+        computation.increments().forEach((stock, increment) -> {
+            int newReserved = stock.getReserved() + increment;
+            stock.setReserved(newReserved);
+        });
+
+        InventoryReservation reservation = existing != null ? existing : new InventoryReservation();
+        reservation.setOrderNumber(orderNumber);
+        reservation.setIdempotencyKey(idempotencyKey);
+        reservation.setFailureReason(null);
+        reservation.setStatus(ReservationStatus.RESERVED);
+        reservation.getItems().clear();
+
+        for (Map.Entry<Warehouse, Map<Product, Integer>> entry : computation.plan().entrySet()) {
+            Warehouse warehouse = entry.getKey();
+            for (Map.Entry<Product, Integer> itemEntry : entry.getValue().entrySet()) {
+                InventoryReservationItem item = new InventoryReservationItem();
+                item.setWarehouse(warehouse);
+                item.setProduct(itemEntry.getKey());
+                item.setQuantity(itemEntry.getValue());
+                reservation.addItem(item);
+            }
+        }
+
+        InventoryReservation saved = reservationRepository.save(reservation);
+        log.info("Reserved inventory for order={} warehouses={}", orderNumber,
+                saved.getItems().stream()
+                        .map(i -> i.getWarehouse().getWarehouseCode())
+                        .distinct()
+                        .toList());
+
+        return toAllocationDto(saved);
+    }
+
+    @Transactional
+    public InventoryAllocationDTO releaseReservation(String orderNumber, String reason) {
+        InventoryReservation reservation = reservationRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Reservation not found for order " + orderNumber));
+
+        if (reservation.getStatus() == ReservationStatus.RELEASED) {
+            return toAllocationDto(reservation);
+        }
+
+        if (reservation.getStatus() == ReservationStatus.COMMITTED) {
+            throw new IllegalStateException("Cannot release inventory that has already been committed for order " + orderNumber);
+        }
+
+        Map<Stock, Integer> adjustments = new LinkedHashMap<>();
+        for (InventoryReservationItem item : reservation.getItems()) {
+            Stock stock = stockRepository.findByProductAndWarehouse(item.getProduct(), item.getWarehouse())
+                    .orElseThrow(() -> new IllegalStateException("Stock row missing for warehouse="
+                            + item.getWarehouse().getWarehouseCode() + " product="
+                            + item.getProduct().getProductCode()));
+            adjustments.merge(stock, item.getQuantity(), Integer::sum);
+        }
+
+        adjustments.forEach((stock, quantity) -> {
+            if (stock.getReserved() < quantity) {
+                throw new IllegalStateException("Invariant violated: reserved stock would become negative");
+            }
+            stock.setReserved(stock.getReserved() - quantity);
+        });
+
+        reservation.setStatus(ReservationStatus.RELEASED);
+        reservation.setFailureReason(reason);
+
+        return toAllocationDto(reservation);
+    }
+
+    @Transactional
+    public InventoryAllocationDTO commitReservation(String orderNumber) {
+        InventoryReservation reservation = reservationRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Reservation not found for order " + orderNumber));
+
+        if (reservation.getStatus() == ReservationStatus.COMMITTED) {
+            return toAllocationDto(reservation);
+        }
+
+        if (reservation.getStatus() != ReservationStatus.RESERVED) {
+            throw new IllegalStateException("Reservation not in RESERVED status for commit, order=" + orderNumber);
+        }
+
+        Map<Stock, Integer> adjustments = new LinkedHashMap<>();
+        for (InventoryReservationItem item : reservation.getItems()) {
+            Stock stock = stockRepository.findByProductAndWarehouse(item.getProduct(), item.getWarehouse())
+                    .orElseThrow(() -> new IllegalStateException("Stock row missing for warehouse="
+                            + item.getWarehouse().getWarehouseCode() + " product="
+                            + item.getProduct().getProductCode()));
+            adjustments.merge(stock, item.getQuantity(), Integer::sum);
+        }
+
+        adjustments.forEach((stock, quantity) -> {
+            if (stock.getReserved() < quantity || stock.getOnHand() < quantity) {
+                throw new IllegalStateException("Invariant violated: not enough stock to commit order " + orderNumber);
+            }
+            stock.setReserved(stock.getReserved() - quantity);
+            stock.setOnHand(stock.getOnHand() - quantity);
+        });
+
+        reservation.setStatus(ReservationStatus.COMMITTED);
+        reservation.setFailureReason(null);
+
+        return toAllocationDto(reservation);
+    }
+
+    @Transactional
+    public InventoryAllocationDTO getReservation(String orderNumber) {
+        InventoryReservation reservation = reservationRepository.findByOrderNumber(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Reservation not found for order " + orderNumber));
+        return toAllocationDto(reservation);
+    }
+
     // --- Mapper
     public Warehouse toEntity(CreateWarehouseDTO dto) {
         return modelMapper.map(dto, Warehouse.class);
@@ -205,4 +388,198 @@ public class WarehouseService {
         dto.setProductCode(s.getProduct().getProductCode());
         return dto;
     }
+
+    private Map<String, Integer> normaliseRequest(List<InventoryRequestItem> requestItems) {
+        Map<String, Integer> required = new LinkedHashMap<>();
+        for (InventoryRequestItem item : requestItems) {
+            if (item == null) continue;
+            String productCode = Optional.ofNullable(item.productCode())
+                    .map(String::trim)
+                    .orElseThrow(() -> new IllegalArgumentException("Product code cannot be null"));
+            if (productCode.isEmpty()) {
+                throw new IllegalArgumentException("Product code cannot be blank");
+            }
+            if (item.quantity() <= 0) {
+                throw new IllegalArgumentException("Quantity must be positive for product " + productCode);
+            }
+            required.merge(productCode, item.quantity(), Integer::sum);
+        }
+        return required;
+    }
+
+    private Optional<AllocationComputation> trySingleWarehouse(Map<String, Integer> required,
+                                                               Map<String, List<Stock>> stocksByProduct,
+                                                               Map<Stock, Integer> availableByStock) {
+        Map<Warehouse, Integer> slackByWarehouse = new HashMap<>();
+
+        Set<Warehouse> warehouses = stocksByProduct.values().stream()
+                .flatMap(Collection::stream)
+                .map(Stock::getWarehouse)
+                .collect(Collectors.toSet());
+
+        Warehouse bestWarehouse = null;
+        int bestSlack = Integer.MIN_VALUE;
+
+        for (Warehouse warehouse : warehouses) {
+            int slack = 0;
+            boolean canFulfill = true;
+            for (Map.Entry<String, Integer> entry : required.entrySet()) {
+                List<Stock> candidates = stocksByProduct.getOrDefault(entry.getKey(), List.of());
+                Stock stock = findStockForWarehouse(candidates, warehouse.getId());
+                int available = stock == null ? 0 : availableByStock.getOrDefault(stock, 0);
+                if (available < entry.getValue()) {
+                    canFulfill = false;
+                    break;
+                }
+                slack += (available - entry.getValue());
+            }
+            if (canFulfill) {
+                slackByWarehouse.put(warehouse, slack);
+                if (slack > bestSlack) {
+                    bestWarehouse = warehouse;
+                    bestSlack = slack;
+                }
+            }
+        }
+
+        if (bestWarehouse == null) {
+            return Optional.empty();
+        }
+
+        Map<Warehouse, Map<Product, Integer>> plan = new LinkedHashMap<>();
+        Map<Product, Integer> productPlan = new LinkedHashMap<>();
+        Map<Stock, Integer> increments = new LinkedHashMap<>();
+
+        for (Map.Entry<String, Integer> entry : required.entrySet()) {
+            List<Stock> candidates = stocksByProduct.getOrDefault(entry.getKey(), List.of());
+            Stock stock = findStockForWarehouse(candidates, bestWarehouse.getId());
+            if (stock == null) {
+                throw new IllegalStateException("Unexpected state: missing stock for warehouse=" + bestWarehouse.getWarehouseCode());
+            }
+            int qty = entry.getValue();
+            int available = availableByStock.getOrDefault(stock, 0);
+            if (available < qty) {
+                throw new IllegalStateException("Unexpected insufficient stock during single warehouse allocation");
+            }
+            availableByStock.put(stock, available - qty);
+            increments.merge(stock, qty, Integer::sum);
+            productPlan.put(stock.getProduct(), qty);
+        }
+
+        plan.put(bestWarehouse, productPlan);
+        return Optional.of(new AllocationComputation(plan, increments));
+    }
+
+    private AllocationComputation allocateAcrossWarehouses(Map<String, Integer> required,
+                                                           Map<String, List<Stock>> stocksByProduct,
+                                                           Map<Stock, Integer> availableByStock) {
+
+        Map<Warehouse, Map<Product, Integer>> plan = new LinkedHashMap<>();
+        Map<Stock, Integer> increments = new LinkedHashMap<>();
+        LinkedHashSet<UUID> preferredWarehouses = new LinkedHashSet<>();
+
+        List<Map.Entry<String, Integer>> sortedProducts = required.entrySet().stream()
+                .sorted((a, b) -> Integer.compare(b.getValue(), a.getValue()))
+                .toList();
+
+        for (Map.Entry<String, Integer> entry : sortedProducts) {
+            String productCode = entry.getKey();
+            int remaining = entry.getValue();
+
+            List<Stock> candidates = new ArrayList<>(stocksByProduct.getOrDefault(productCode, List.of()));
+            candidates.sort((a, b) -> {
+                boolean aPreferred = preferredWarehouses.contains(a.getWarehouse().getId());
+                boolean bPreferred = preferredWarehouses.contains(b.getWarehouse().getId());
+                if (aPreferred != bPreferred) {
+                    return aPreferred ? -1 : 1;
+                }
+                int availDiff = Integer.compare(
+                        availableByStock.getOrDefault(b, 0),
+                        availableByStock.getOrDefault(a, 0));
+                if (availDiff != 0) {
+                    return availDiff;
+                }
+                return a.getWarehouse().getWarehouseCode()
+                        .compareTo(b.getWarehouse().getWarehouseCode());
+            });
+
+            for (Stock stock : candidates) {
+                int available = availableByStock.getOrDefault(stock, 0);
+                if (available <= 0) {
+                    continue;
+                }
+                int toReserve = Math.min(remaining, available);
+                if (toReserve <= 0) {
+                    continue;
+                }
+
+                availableByStock.put(stock, available - toReserve);
+                increments.merge(stock, toReserve, Integer::sum);
+
+                Warehouse warehouse = stock.getWarehouse();
+                Product product = stock.getProduct();
+                plan.computeIfAbsent(warehouse, wh -> new LinkedHashMap<>())
+                        .merge(product, toReserve, Integer::sum);
+                preferredWarehouses.add(warehouse.getId());
+
+                remaining -= toReserve;
+                if (remaining == 0) {
+                    break;
+                }
+            }
+
+            if (remaining > 0) {
+                throw new InsufficientStockException(
+                        "Not enough stock after allocation attempt for product " + productCode,
+                        List.of(new InsufficientStockException.MissingItem(productCode, entry.getValue(), entry.getValue() - remaining))
+                );
+            }
+        }
+
+        return new AllocationComputation(plan, increments);
+    }
+
+    private Stock findStockForWarehouse(List<Stock> stocks, UUID warehouseId) {
+        for (Stock stock : stocks) {
+            if (stock.getWarehouse().getId().equals(warehouseId)) {
+                return stock;
+            }
+        }
+        return null;
+    }
+
+    private InventoryAllocationDTO toAllocationDto(InventoryReservation reservation) {
+        Map<String, List<InventoryReservationItem>> itemsByWarehouse = reservation.getItems().stream()
+                .collect(Collectors.groupingBy(
+                        item -> item.getWarehouse().getWarehouseCode(),
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        List<InventoryAllocationDTO.WarehouseAllocationDTO> allocations = itemsByWarehouse.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> new InventoryAllocationDTO.WarehouseAllocationDTO(
+                        entry.getKey(),
+                        entry.getValue().stream()
+                                .map(item -> new InventoryAllocationDTO.ItemAllocationDTO(
+                                        item.getProduct().getProductCode(),
+                                        item.getQuantity()
+                                ))
+                                .sorted(Comparator.comparing(InventoryAllocationDTO.ItemAllocationDTO::productCode))
+                                .toList()
+                ))
+                .toList();
+
+        return new InventoryAllocationDTO(
+                reservation.getOrderNumber(),
+                reservation.getIdempotencyKey(),
+                reservation.getStatus(),
+                allocations
+        );
+    }
+
+    private record AllocationComputation(
+            Map<Warehouse, Map<Product, Integer>> plan,
+            Map<Stock, Integer> increments
+    ) {}
 }

@@ -20,4 +20,10 @@ public class Customer extends User {
     @Column(length = 255)
     private String address;
 
+    @Column(name = "bank_customer_id", length = 64)
+    private String bankCustomerId;
+
+    @Column(name = "bank_account_id")
+    private Long bankAccountId;
+
 }
