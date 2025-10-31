@@ -30,11 +30,17 @@ public class GlobalExceptionHandler {
         return last;
     }
 
+    // 409 conflict ie duplicated refunded/ idempotency key exists
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiError> conflict(ConflictException ex, HttpServletRequest req) {
+        return respond(HttpStatus.CONFLICT, ex.getMessage(), req, null);
+    }
+
     // 400 (business logic: insufficient funds)
     @ExceptionHandler(InsufficientBalanceException.class)
     public ResponseEntity<ApiError> insufficientBalance(InsufficientBalanceException ex,
                                                         HttpServletRequest req) {
-        return respond(HttpStatus.BAD_REQUEST, "Transaction failed", req, List.of(ex.getMessage()));
+        return respond(HttpStatus.UNPROCESSABLE_ENTITY, "Insufficient balance.", req, List.of(ex.getMessage()));
     }
 
     // 404
@@ -61,41 +67,11 @@ public class GlobalExceptionHandler {
 //        return respond(HttpStatus.BAD_REQUEST, "Validation failed", req, sub);
 //    }
 
-    @ExceptionHandler(PessimisticLockException.class)
-    public ResponseEntity<ApiError> pessimisticLocked(PessimisticLockException ex,
-                                                      HttpServletRequest req) {
-        String mostSpecific = deepestMessage(ex);
-        return respond(HttpStatus.CONFLICT, "Resource is locked (pessimistic lock)", req,
-                mostSpecific == null ? null : List.of(mostSpecific));
-    }
-
-    @ExceptionHandler(LockTimeoutException.class)
-    public ResponseEntity<ApiError> lockTimeout(LockTimeoutException ex,
-                                                HttpServletRequest req) {
-        String mostSpecific = deepestMessage(ex);
-        return respond(HttpStatus.CONFLICT, "Lock wait timed out – please retry", req,
-                mostSpecific == null ? null : List.of(mostSpecific));
-    }
-
-    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
-    public ResponseEntity<ApiError> optimisticConflict(ObjectOptimisticLockingFailureException ex,
-                                                       HttpServletRequest req) {
-        // Prefer explicit entity + id if available; otherwise fall back to message
-        var sub = new java.util.ArrayList<String>();
-        if (ex.getPersistentClassName() != null) sub.add("entity: " + ex.getPersistentClassName());
-        if (ex.getIdentifier() != null)        sub.add("id: " + ex.getIdentifier());
-        if (sub.isEmpty() && ex.getMessage() != null) sub.add(ex.getMessage());
-
-        return respond(HttpStatus.CONFLICT, "Edit conflict (optimistic locking failed)", req,
-                sub.isEmpty() ? null : sub);
-    }
-
     // 500 fallback
-//    @ExceptionHandler(Exception.class)
-//    public ResponseEntity<ApiError> generic(Exception ex, HttpServletRequest req) {
-    //    log here
-//        return respond(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error", req, null);
-//    }
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> generic(Exception ex, HttpServletRequest req) {
+        return respond(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error", req, null);
+    }
 }
 
 

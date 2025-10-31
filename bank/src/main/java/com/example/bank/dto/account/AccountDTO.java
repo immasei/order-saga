@@ -15,11 +15,12 @@ import java.util.Set;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class AccountDTO {
 
-    private Long id;
+
+    private String accountRef;
+    private String accountHolderRef;
     private String accountName;
+
     private Double balance;
     private AccountType accountType;
-    private Long customerId;
     private Set<TransactionResponseDTO> transactions;
-
 }

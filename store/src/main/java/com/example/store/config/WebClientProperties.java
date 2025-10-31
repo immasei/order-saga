@@ -8,8 +8,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @Configuration
-@ConfigurationProperties(prefix = "endpoints")
-public class ClientProperties {
+@ConfigurationProperties(prefix = "app.endpoints")
+public class WebClientProperties {
     private String bank;
     private String deliveryCo;
     private String email;

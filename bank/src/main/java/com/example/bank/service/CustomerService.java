@@ -25,15 +25,15 @@ public class CustomerService implements DtoMapper<Customer, CreateCustomerDTO, C
         return toResponse(customer);
     }
 
-    public CustomerDTO getCustomerById(Long id) {
-        Customer customer = customerRepository.getOrThrow(id);
+    public CustomerDTO getCustomerByRef(String ref) {
+        Customer customer = customerRepository.findByCustomerRefOrThrow(ref);
         return toResponse(customer);
     }
 
     public List<CustomerDTO> getAllCustomers() {
         return customerRepository.findAll()
             .stream()
-            .map(customer -> toResponse(customer))
+            .map(this::toResponse)
             .collect(Collectors.toList());
     }
 
@@ -43,10 +43,14 @@ public class CustomerService implements DtoMapper<Customer, CreateCustomerDTO, C
     }
 
     @Override
-    public CustomerDTO toResponse(Customer cus) {
-        CustomerDTO dto = modelMapper.map(cus, CustomerDTO.class);
-        List<AccountDTO> accounts = cus.getAccounts().stream()
-                .map(acc -> modelMapper.map(acc, AccountDTO.class))
+    public CustomerDTO toResponse(Customer cli) {
+        CustomerDTO dto = modelMapper.map(cli, CustomerDTO.class);
+        List<AccountDTO> accounts = cli.getAccounts().stream()
+                .map(acc -> {
+                    AccountDTO accountDto = modelMapper.map(acc, AccountDTO.class);
+                    accountDto.setAccountHolderRef(null);
+                    return accountDto;
+                })
                 .toList();
 
         dto.setAccounts(accounts);

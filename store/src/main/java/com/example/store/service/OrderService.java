@@ -1,15 +1,20 @@
 package com.example.store.service;
 
+import com.example.store.config.KafkaTopicProperties;
 import com.example.store.dto.order.CreateOrderDTO;
 import com.example.store.dto.order.OrderDTO;
 import com.example.store.dto.order.CreateOrderItemDTO;
 import com.example.store.dto.order.OrderItemDTO;
+import com.example.store.enums.AggregateType;
 import com.example.store.enums.OrderStatus;
 import com.example.store.enums.UserRole;
+import com.example.store.kafka.event.OrderPlaced;
 import com.example.store.model.*;
+import com.example.store.repository.OrderItemRepository;
 import com.example.store.repository.UserRepository;
 import com.example.store.repository.ProductRepository;
 import com.example.store.repository.OrderRepository;
+import com.github.f4b6a3.ulid.UlidCreator;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -27,6 +32,31 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final OutboxService outboxService;
+    private final KafkaTopicProperties kafkaProps;
+
+    // === Entry point: user placed order, outbox OrderPlaced ===
+    @Transactional
+    public OrderDTO placeOrder(CreateOrderDTO orderDto) {
+        String idempotencyKey = UlidCreator.getMonotonicUlid().toString();
+
+        // 1. save order to db
+        OrderDTO order = createOrder(orderDto, idempotencyKey);
+
+        // 2. create OrderPlaced event (aka fact)
+        OrderPlaced evt = OrderPlaced.of(order, idempotencyKey);
+
+        // 3. save OrderCreated to db, this event will later be
+        //    published by kafka/OutboxPublisher
+        Outbox outbox = new Outbox();
+        outbox.setAggregateId(order.getOrderNumber());
+        outbox.setAggregateType(AggregateType.ORDER);
+        outbox.setEventType(evt.getClass().getName());
+        outbox.setTopic(kafkaProps.ordersEvents());
+        outboxService.save(outbox, evt);
+
+        return order;
+    }
 
     @Transactional(propagation = Propagation.REQUIRED)
     public OrderDTO createOrder(CreateOrderDTO orderDto, String idempotencyKey) {
@@ -49,6 +79,8 @@ public class OrderService {
         Order order = toEntity(orderDto);
         order.setCustomer(user);
         order.setIdempotencyKey(idempotencyKey);
+        System.out.println(order); //ok
+
         order.getOrderItems().clear();
         if (orderDto.getDeliveryAddress() == null)
             order.setDeliveryAddress(user.getAddress());
@@ -74,7 +106,8 @@ public class OrderService {
             item.computeLineTotal();
         }
 
-        Order saved = orderRepository.saveAndFlush(order);
+        Order saved = orderRepository.saveAndFlush(order);//throw
+        System.out.println(saved.getIdempotencyKey());//dont reach
         return toResponse(saved);
     }
 
