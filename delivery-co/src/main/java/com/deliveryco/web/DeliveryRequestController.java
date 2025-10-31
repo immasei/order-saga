@@ -30,8 +30,8 @@ public class DeliveryRequestController {
         DeliveryRequest request = new DeliveryRequest(
                 requestDto.externalOrderId(),
                 requestDto.customerId(),
-                requestDto.pickupWarehouseId(),
-                requestDto.pickupAddress(),
+                null, // pickupWarehouseId removed in API; multiple warehouses now supported
+                null, // pickupAddress removed in API
                 requestDto.dropoffAddress(),
                 requestDto.contactEmail(),
                 requestDto.lossRate(),
@@ -49,10 +49,11 @@ public class DeliveryRequestController {
         return ResponseEntity.created(URI.create("/api/deliveries/" + order.getId())).body(response);
     }
 
-    private List<DeliveryRequestItem> mapItems(List<DeliveryRequestDto.DeliveryRequestItemDto> items) {
-        return items.stream()
-                .map(item -> new DeliveryRequestItem(item.sku(), item.description(), item.quantity()))
+    private List<DeliveryRequestItem> mapItems(java.util.Map<String, java.util.Map<String, Integer>> itemsByWarehouse) {
+        // Flatten structure: for each warehouse -> for each productId/quantity -> DeliveryRequestItem(sku=productId)
+        return itemsByWarehouse.values().stream()
+                .flatMap(productMap -> productMap.entrySet().stream()
+                        .map(e -> new DeliveryRequestItem(e.getKey(), null, e.getValue())))
                 .toList();
     }
 }
-
