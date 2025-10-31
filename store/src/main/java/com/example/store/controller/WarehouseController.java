@@ -1,11 +1,13 @@
 package com.example.store.controller;
 
 import com.example.store.dto.inventory.CreateWarehouseDTO;
+import com.example.store.dto.inventory.InventoryAllocationDTO;
+import com.example.store.dto.inventory.ReleaseReservationRequest;
 import com.example.store.dto.inventory.StockDTO;
 import com.example.store.dto.inventory.WarehouseDTO;
 import com.example.store.service.WarehouseService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,10 +16,10 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/warehouses")
+@RequiredArgsConstructor
 public class WarehouseController {
 
-    @Autowired
-    private WarehouseService warehouseService;
+    private final WarehouseService warehouseService;
 
     // Create a new warehouse
     @PostMapping
@@ -49,6 +51,25 @@ public class WarehouseController {
     public ResponseEntity<List<StockDTO>> getStocksByWarehouse(@PathVariable String warehouseCode) {
         List<StockDTO> stocks = warehouseService.getStocksByWarehouseCode(warehouseCode); // upsert
         return ResponseEntity.ok(stocks);
+    }
+
+    @GetMapping("/reservations/{orderNumber}")
+    public ResponseEntity<InventoryAllocationDTO> getReservation(@PathVariable String orderNumber) {
+        InventoryAllocationDTO reservation = warehouseService.getReservation(orderNumber);
+        return ResponseEntity.ok(reservation);
+    }
+
+    @PostMapping("/reservations/{orderNumber}/release")
+    public ResponseEntity<InventoryAllocationDTO> releaseReservation(@PathVariable String orderNumber,
+                                                                     @RequestBody @Valid ReleaseReservationRequest request) {
+        InventoryAllocationDTO reservation = warehouseService.releaseReservation(orderNumber, request.reason());
+        return ResponseEntity.ok(reservation);
+    }
+
+    @PostMapping("/reservations/{orderNumber}/commit")
+    public ResponseEntity<InventoryAllocationDTO> commitReservation(@PathVariable String orderNumber) {
+        InventoryAllocationDTO reservation = warehouseService.commitReservation(orderNumber);
+        return ResponseEntity.ok(reservation);
     }
 
     // Get warehouse by ID

@@ -151,6 +151,12 @@ ALTER TABLE public.payments
 ALTER TABLE public.users
     ADD CONSTRAINT uk_users_email UNIQUE (email);
 
+ALTER TABLE public.orders
+    ADD CONSTRAINT uk_orders_order_number UNIQUE (order_number);
+
+ALTER TABLE public.orders
+    ADD CONSTRAINT uk_orders_idempotency_key UNIQUE (idempotency_key);
+
 -- ======================
 -- Indexes
 -- ======================

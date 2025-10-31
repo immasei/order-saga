@@ -19,8 +19,8 @@ public class KafkaTopicConfig {
         return props.getTopics().values().stream()
             .flatMap(base ->
                 List.of(
-                    new NewTopic(base + ".commands", props.getPartitions(), props.getReplicas()),
-                    new NewTopic(base + ".events", props.getPartitions(), props.getReplicas())
+                    new NewTopic(props.commandsOf(base),     props.getPartitions(), props.getReplicas()),
+                    new NewTopic(props.eventsOf(base),       props.getPartitions(), props.getReplicas())
                 ).stream()
             )
             .collect(Collectors.toList());

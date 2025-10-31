@@ -11,6 +11,7 @@ import com.example.store.service.OrderService;
 import com.example.store.service.OutboxService;
 import com.github.f4b6a3.ulid.UlidCreator;
 import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaHandler;
@@ -63,7 +64,7 @@ public class OrderHandler {
     //      - RefundPayment event
     //      - NotifyCustomer event
     @KafkaHandler
-    public void on(@Payload CancelOrder cmd) {
+    public void on(@Payload @Valid CancelOrder cmd) {
         log.warn(cmd.toString()); // tmp remove later
         // TODO
     }

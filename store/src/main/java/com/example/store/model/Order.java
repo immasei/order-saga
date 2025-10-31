@@ -1,6 +1,7 @@
 package com.example.store.model;
 
 import com.example.store.enums.OrderStatus;
+import com.example.store.enums.ReservationStatus;
 import com.github.f4b6a3.ulid.UlidCreator;
 import jakarta.persistence.*;
 import lombok.*;
@@ -9,10 +10,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 @Entity
 @NoArgsConstructor
@@ -20,7 +18,11 @@ import java.util.UUID;
 @Setter
 @Table(
     name = "orders",
-    indexes = @Index(name = "idx_orders_order_number", columnList = "order_number", unique = true)
+    indexes = @Index(name = "idx_orders_order_number", columnList = "order_number"),
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_orders_order_number", columnNames = "order_number"),
+        @UniqueConstraint(name = "uk_orders_idempotency_key", columnNames = "idempotency_key")
+    }
 )
 @ToString
 public class Order {
@@ -59,7 +61,7 @@ public class Order {
     @CreationTimestamp
     private LocalDateTime placedAt;
 
-    @Column(length=80, nullable=false, updatable=false)
+    @Column(length=80, nullable=false, updatable=false, unique=true)
     private String idempotencyKey;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -118,5 +120,13 @@ public class Order {
         item.setOrder(this);
         this.orderItems.add(item);
     }
+
+    public boolean isTerminal() {
+        return switch (status) {
+            case CANCELLED, SHIPPED, ERROR_DEAD_LETTER -> true;
+            default -> false;
+        };
+    }
+
 
 }
