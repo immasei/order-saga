@@ -244,15 +244,15 @@
 
                 <!-- Get Customer by ID -->
                 <div class="fieldset">
-                    <div class="legend">Get Customer by ID (GET /api/customers/{id})</div>
+                    <div class="legend">Get Customer by Ref (GET /api/customers/{customerRef})</div>
                     <div class="inline-5">
                         <div style="grid-column: span 4;">
-                            <input id="custIdLookup" type="number" placeholder="Customer Id" />
+                            <input id="custIdLookup" placeholder="Customer Ref" />
                         </div>
                         <div style="grid-column: span 1;">
                             <button class="btn primary" id="btnGetCustomer"
                                     data-endpoint="/api/customers/:customerId" data-method="GET">
-                                Get by Id
+                                Get by Ref
                             </button>
                         </div>
                     </div>
@@ -273,14 +273,14 @@
             <!-- Accounts -->
             <section id="panel-accounts" class="card tabpanel">
                 <h2>Accounts</h2>
-                <p class="desc">Manage customer accounts via <span class="pill">/api/customers/{customerId}/accounts</span>.</p>
+                <p class="desc">Manage customer accounts via <span class="pill">/api/accounts</span> & <span class="pill">/api/customers/{customerRef}/accounts</span>.</p>
 
                 <!-- Create Account -->
                 <div class="fieldset">
-                    <div class="legend">Create Account (POST /api/customers/{customerId}/accounts)</div>
+                    <div class="legend">Create Account (POST /api/accounts)</div>
                     <div class="inline-7">
                         <div style="grid-column: span 2;">
-                            <input id="accCustomerId" type="number" placeholder="Customer Id" />
+                            <input id="accCustomerId" placeholder="Customer Ref" />
                         </div>
                         <div style="grid-column: span 2;">
                             <input id="accName" placeholder="Account name" />
@@ -294,7 +294,7 @@
                         </div>
                         <div style="grid-column: span 1;">
                             <button class="btn primary" id="btnCreateAccount"
-                                    data-endpoint="/api/customers/:customerId/accounts" data-method="POST">
+                                    data-endpoint="/api/accounts" data-method="POST">
                                 Create
                             </button>
                         </div>
@@ -303,18 +303,35 @@
 
                 <!-- Get Account by ID -->
                 <div class="fieldset">
-                    <div class="legend">Get Account by ID (GET /api/customers/{customerId}/accounts/{accountId})</div>
+                    <div class="legend">Get Account by Customer Ref and Account Ref (GET /api/customers/{customerRef}/accounts/{accountRef})</div>
                     <div class="inline-5">
                         <div style="grid-column: span 2;">
-                            <input id="accLookupCustomerId" type="number" placeholder="Customer Id" />
+                            <input id="accLookupCustomerId" placeholder="Customer Ref" />
                         </div>
                         <div style="grid-column: span 2;">
-                            <input id="accLookupAccountId" type="number" placeholder="Account Id" />
+                            <input id="accLookupAccountId" placeholder="Account Ref" />
                         </div>
                         <div style="grid-column: span 1;">
                             <button class="btn primary" id="btnGetAccount"
                                     data-endpoint="/api/customers/:customerId/accounts/:accountId" data-method="GET">
-                                Get by Id
+                                Get by Refs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Get Account by ID 2 -->
+                <div class="fieldset">
+                    <div class="legend">Get Account by Account Ref (GET /api/accounts/{accountRef})</div>
+                    <div class="inline-5">
+                
+                        <div style="grid-column: span 3;">
+                            <input id="accLookupAccountId2" placeholder="Account Ref" />
+                        </div>
+                        <div style="grid-column: span 2;">
+                            <button class="btn primary" id="btnGetAccount2"
+                                    data-endpoint="/api/accounts/:accountId" data-method="GET">
+                                Get by Ref
                             </button>
                         </div>
                     </div>
@@ -322,14 +339,27 @@
 
                 <!-- List Accounts by Customer -->
                 <div class="fieldset">
-                    <div class="legend">List Customer Accounts (+transactions) (GET /api/customers/{customerId}/accounts)</div>
+                    <div class="legend">List Accounts (+transactions) by Customer (GET /api/customers/{customerRef}/accounts)</div>
                     <div class="inline-5">
                         <div style="grid-column: span 3;">
-                            <input id="accListCustomerId" type="number" placeholder="Customer Id" />
+                            <input id="accListCustomerId" placeholder="Customer Ref" />
                         </div>
                         <div style="grid-column: span 2;">
                             <button class="btn primary" id="btnListAccounts"
                                     data-endpoint="/api/customers/:customerId/accounts" data-method="GET">
+                                List accounts by customer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- List Accounts -->
+                <div class="fieldset">
+                    <div class="legend">List Accounts (+transactions) (GET /api/accounts)</div>
+                    <div class="inline-5">
+                        <div style="grid-column: span 5;">
+                            <button class="btn primary" id="btnListAccounts2"
+                                    data-endpoint="/api/accounts" data-method="GET">
                                 List accounts
                             </button>
                         </div>
@@ -340,21 +370,21 @@
             <!-- Transactions -->
             <section id="panel-transactions" class="card tabpanel">
                 <h2>Transactions</h2>
-                <p class="desc">Execute transfers, deposits, withdrawals, and refunds via <span class="pill">/api/transactions/*</span>.</p>
+                <p class="desc">Execute transfers, deposits, withdrawals, and refunds via <span class="pill">/api/*</span>.</p>
 
                 <!-- Deposit -->
                 <div class="fieldset">
                     <div class="legend">Deposit (POST /api/transactions/deposit)</div>
                     <div class="inline-3">
                         <div style="grid-column: span 1;">
-                            <input id="depToAccountId" type="number" placeholder="To Account Id" />
+                            <input id="depToAccountId" placeholder="To Account Ref" />
                         </div>
                         <div style="grid-column: span 1;">
                             <input id="depAmount" type="number" step="0.01" placeholder="Amount" />
                         </div>
                         <div style="grid-column: span 1;">
                             <button class="btn primary" id="btnDeposit"
-                                    data-endpoint="/api/transactions/deposit" data-method="POST">
+                                    data-endpoint="/api/deposit" data-method="POST">
                                 Make deposit
                             </button>
                         </div>
@@ -364,17 +394,17 @@
 
                 <!-- Withdraw -->
                 <div class="fieldset">
-                    <div class="legend">Withdraw (POST /api/transactions/withdraw)</div>
+                    <div class="legend">Withdraw (POST /api/withdraw)</div>
                     <div class="inline-3">
                         <div style="grid-column: span 1;">
-                            <input id="wdFromAccountId" type="number" placeholder="From Account Id" />
+                            <input id="wdFromAccountId" placeholder="From Account Ref" />
                         </div>
                         <div style="grid-column: span 1;">
-                            <input id="wdAmount" type="number" step="0.01" placeholder="Amount" />
+                            <input id="wdAmount" step="0.01" placeholder="Amount" />
                         </div>
                         <div style="grid-column: span 1;">
                             <button class="btn primary" id="btnWithdraw"
-                                    data-endpoint="/api/transactions/withdraw" data-method="POST">
+                                    data-endpoint="/api/withdraw" data-method="POST">
                                 Withdraw
                             </button>
                         </div>
@@ -383,13 +413,13 @@
 
                 <!-- Transfer -->
                 <div class="fieldset">
-                    <div class="legend">Transfer (POST /api/transactions/transfer)</div>
+                    <div class="legend">Transfer (POST /api/transfer)</div>
                     <div class="inline-3">
                         <div>
-                            <input id="tfFromAccountId" type="number" placeholder="From Account ID" />
+                            <input id="tfFromAccountId" placeholder="From Account Ref" />
                         </div>
                         <div>
-                            <input id="tfToAccountId" type="number" placeholder="To Account ID" />
+                            <input id="tfToAccountId" placeholder="To Account Ref" />
                         </div>
                         <div>
                             <input id="tfAmount" type="number" step="0.01" placeholder="Amount" />
@@ -398,7 +428,7 @@
                     <div class="spacer"></div>
                     <div class="row">
                         <button class="btn primary" id="btnTransfer"
-                                data-endpoint="/api/transactions/transfer" data-method="POST">
+                                data-endpoint="/api/transfer" data-method="POST">
                             Transfer funds
                         </button>
                     </div>
@@ -406,14 +436,14 @@
 
                 <!-- Refund -->
                 <div class="fieldset">
-                    <div class="legend">Refund (POST /api/transactions/refund)</div>
+                    <div class="legend">Refund (POST /api/refund)</div>
                     <div class="inline-3">
                         <div style="grid-column: span 2;">
-                            <input id="rfOriginalId" type="number" placeholder="Original Transaction Id" />
+                            <input id="rfOriginalId" placeholder="Original Transaction Ref" />
                         </div>
                         <div style="grid-column: span 1;">
                             <button class="btn primary" id="btnRefund"
-                                    data-endpoint="/api/transactions/refund" data-method="POST">
+                                    data-endpoint="/api/refund" data-method="POST">
                                 Request refund
                             </button>
                         </div>
@@ -446,7 +476,7 @@
 <script>
     // ===== Config =====
     // If your API runs on a different origin/port, set it here, e.g. "http://localhost:8080"
-    const BASE_URL = "http://localhost:8081"; // keep empty to use same-origin relative paths
+    const BASE_URL = "http://localhost:8082"; // keep empty to use same-origin relative paths
 
     // ===== Utilities =====
     const $ = (id) => document.getElementById(id);
@@ -578,13 +608,14 @@
         let endpoint;
 
         if (customerId) {
-            endpoint = resolveEndpoint("/api/customers/:customerId/accounts", { customerId });
+            endpoint = resolveEndpoint("/api/accounts");
         } else {
-            endpoint = "/api/customers/{customerId?}/accounts";
+            endpoint = "/api/accounts";
             customerId = "{customerId?}";
         }
 
         const payload = {
+            customerRef: $("accCustomerId").value.trim(),
             accountName: $("accName").value.trim(),
             accountType: $("accType").value.trim() || null,
         };
@@ -617,6 +648,25 @@
         setInspector({ method: "GET", endpoint, status: res.statusLine, result: res.data });
     });
 
+    $("btnGetAccount2").onclick = withBusy($("btnGetAccount2"), async () => {
+        const accountId  = $("accLookupAccountId2").value.trim();
+
+        if (accountId) {
+            endpoint = resolveEndpoint(
+                "/api/accounts/:accountId",
+                { accountId }
+            );
+        } else {
+            // fallback placeholder path to show clearly in Inspector
+            const acc  = accountId  || "{accountId?}";
+            endpoint = `/api/accounts/${acc}`;
+        }
+        setInspector({ method: "GET", endpoint });
+
+        const res = await doRequest({ method: "GET", endpoint });
+        setInspector({ method: "GET", endpoint, status: res.statusLine, result: res.data });
+    });
+
     $("btnListAccounts").onclick = withBusy($("btnListAccounts"), async () => {
         const customerId = $("accListCustomerId").value.trim();
         const endpoint = resolveEndpoint("/api/customers/:customerId/accounts", { customerId });
@@ -626,13 +676,21 @@
         setInspector({ method: "GET", endpoint, status: res.statusLine, result: res.data });
     });
 
+    $("btnListAccounts2").onclick = withBusy($("btnListAccounts2"), async () => {
+        const endpoint = resolveEndpoint("/api/accounts");
+        setInspector({ method: "GET", endpoint });
+
+        const res = await doRequest({ method: "GET", endpoint });
+        setInspector({ method: "GET", endpoint, status: res.statusLine, result: res.data });
+    });
+
     // ===== Wire up: Transactions =====
     $("btnDeposit").onclick = withBusy($("btnDeposit"), async () => {
         const payload = {
-            toAccountId: Number($("depToAccountId").value.trim()),
+            toAccountRef: $("depToAccountId").value.trim(),
             amount:      Number($("depAmount").value.trim())
         };
-        const endpoint = "/api/transactions/deposit";
+        const endpoint = "/api/deposit";
         setInspector({ method: "POST", endpoint, payload });
 
         const res = await doRequest({ method: "POST", endpoint, body: payload });
@@ -641,10 +699,10 @@
 
     $("btnWithdraw").onclick = withBusy($("btnWithdraw"), async () => {
         const payload = {
-            fromAccountId: Number($("wdFromAccountId").value.trim()),
+            fromAccountRef: $("wdFromAccountId").value.trim(),
             amount:        Number($("wdAmount").value.trim())
         };
-        const endpoint = "/api/transactions/withdraw";
+        const endpoint = "/api/withdraw";
         setInspector({ method: "POST", endpoint, payload });
 
         const res = await doRequest({ method: "POST", endpoint, body: payload });
@@ -653,11 +711,11 @@
 
     $("btnTransfer").onclick = withBusy($("btnTransfer"), async () => {
         const payload = {
-            fromAccountId: Number($("tfFromAccountId").value.trim()),
-            toAccountId:   Number($("tfToAccountId").value.trim()),
-            amount:        Number($("tfAmount").value.trim())
+            fromAccountRef: $("tfFromAccountId").value.trim(),
+            toAccountRef: $("tfToAccountId").value.trim(),
+            amount: Number($("tfAmount").value.trim())
         };
-        const endpoint = "/api/transactions/transfer";
+        const endpoint = "/api/transfer";
         setInspector({ method: "POST", endpoint, payload });
 
         const res = await doRequest({ method: "POST", endpoint, body: payload });
@@ -666,9 +724,9 @@
 
     $("btnRefund").onclick = withBusy($("btnRefund"), async () => {
         const payload = {
-            originalTransactionId: Number($("rfOriginalId").value.trim())
+            originalTransactionRef: $("rfOriginalId").value.trim()
         };
-        const endpoint = "/api/transactions/refund";
+        const endpoint = "/api/refund";
         setInspector({ method: "POST", endpoint, payload });
 
         const res = await doRequest({ method: "POST", endpoint, body: payload });

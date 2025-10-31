@@ -1,13 +1,9 @@
 package com.example.bank.dto.transaction;
 
+import com.example.bank.enums.TransactionType;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.*;
-
-/* Example JSON:
-{
-    "originalTransactionId": "2"
-}
-*/
 
 @Getter
 @Setter
@@ -17,8 +13,9 @@ import lombok.*;
 public class RefundDTO extends TransactionDTO {
     // more like a reversal request for any transaction type
 
-    @NotNull(message = "Original transaction id is required.")
-    private Long originalTransactionId;
-//    private String idempotencyKey;
+    { super.setTransactionType(TransactionType.REFUND); }
 
+    @NotNull(message = "Original transaction ref is required.")
+    @Size(max = 100, message = "Original transaction ref is too long")
+    private String originalTransactionRef;
 }

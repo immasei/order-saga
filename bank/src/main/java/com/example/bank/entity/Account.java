@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.UuidGenerator;
+import com.github.f4b6a3.ulid.UlidCreator;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -16,19 +16,25 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @Entity
+@Table(
+    name = "accounts",
+    indexes = {
+        @Index(name = "ix_account_customer", columnList = "account_holder_id"),
+        @Index(name = "ux_account_ref",     columnList = "account_ref", unique = true)
+    }
+)
 public class Account {
 
     @Id
     @GeneratedValue
-    private long id; // sequential PK managed by DB
+    private UUID id;
 
-//    @UuidGenerator(style = UuidGenerator.Style.TIME)
-//    @Column(nullable = false, unique = true, updatable = false, columnDefinition = "uuid")
-//    private UUID publicId; // public account id (safe to expose via apis)
+    @Column(length = 30, unique = true, nullable = false, updatable = false)
+    private String accountRef;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(nullable = false)
-    private Customer customer;
+    private Customer accountHolder;
 
     @Column(nullable = false)
     private String accountName;
@@ -38,7 +44,7 @@ public class Account {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private AccountType accountType;
+    private AccountType accountType = AccountType.PERSONAL;
 
     @Version
     private int version;
@@ -61,4 +67,14 @@ public class Account {
         this.outgoingTransactions.add(transaction);
     }
 
+    @PrePersist
+    private void onCreate() {
+        generateOrderNumber();
+    }
+
+    private void generateOrderNumber() {
+        if (this.accountRef == null) {
+            this.accountRef = "BAC-" + UlidCreator.getMonotonicUlid().toString();
+        }
+    }
 }
