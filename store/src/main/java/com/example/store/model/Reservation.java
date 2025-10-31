@@ -28,7 +28,7 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-public class InventoryReservation {
+public class Reservation {
 
     @Id
     @GeneratedValue
@@ -56,9 +56,9 @@ public class InventoryReservation {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "reservation", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<InventoryReservationItem> items = new ArrayList<>();
+    private List<ReservationItem> items = new ArrayList<>();
 
-    public void addItem(InventoryReservationItem item) {
+    public void addItem(ReservationItem item) {
         item.setReservation(this);
         this.items.add(item);
     }

@@ -30,4 +30,9 @@ public class CreateOrderDTO {
     @NotEmpty
     List<CreateOrderItemDTO> orderItems;
 
+    // customer's bank account ref for payment
+    @NotBlank(message = "Payment account reference is required")
+    @Size(max = 100, message = "Payment account reference is too long")
+    private String paymentAccountRef;
+
 }

@@ -1,9 +1,9 @@
 package com.example.store.model;
 
 import com.example.store.enums.OrderStatus;
-import com.example.store.enums.ReservationStatus;
 import com.github.f4b6a3.ulid.UlidCreator;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -41,8 +41,11 @@ public class Order {
     @Column(nullable = false, length = 255, updatable = false)
     private String deliveryAddress;
 
+    @Column(nullable = false, length = 100, updatable = false)
+    private String paymentAccountRef;
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 100)
     private OrderStatus status = OrderStatus.PENDING;
 
     @Column(nullable = false, precision = 15, scale = 2, updatable = false)

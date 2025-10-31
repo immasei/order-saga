@@ -67,11 +67,11 @@ public class GlobalExceptionHandler {
 //        return respond(HttpStatus.BAD_REQUEST, "Validation failed", req, sub);
 //    }
 
-//    // 500 fallback
-//    @ExceptionHandler(Exception.class)
-//    public ResponseEntity<ApiError> generic(Exception ex, HttpServletRequest req) {
-//        return respond(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error", req, null);
-//    }
+    // 500 fallback
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> generic(Exception ex, HttpServletRequest req) {
+        return respond(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error", req, null);
+    }
 }
 
 

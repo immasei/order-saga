@@ -1,6 +1,7 @@
 package com.example.store.model;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -12,22 +13,23 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-public class InventoryReservationItem {
+@AllArgsConstructor
+public class ReservationItem {
 
     @Id
     @GeneratedValue
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "reservation_id", nullable = false, updatable = false)
-    private InventoryReservation reservation;
+    @JoinColumn(nullable = false, updatable = false)
+    private Reservation reservation;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "warehouse_id", nullable = false, updatable = false)
+    @JoinColumn(nullable = false, updatable = false)
     private Warehouse warehouse;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false, updatable = false)
+    @JoinColumn(nullable = false, updatable = false)
     private Product product;
 
     @Column(nullable = false)
