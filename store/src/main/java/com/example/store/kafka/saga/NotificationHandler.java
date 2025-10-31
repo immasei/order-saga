@@ -3,6 +3,7 @@ package com.example.store.kafka.saga;
 import com.example.store.kafka.command.NotifyCustomer;
 import com.example.store.service.EmailService;
 import com.example.store.service.OutboxService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaHandler;
@@ -26,7 +27,7 @@ public class NotificationHandler {
     // === Consume NotifyCustomer command
     // === Outbox EmailSent or EmailFailed
     @KafkaHandler
-    public void on(@Payload NotifyCustomer cmd) {
+    public void on(@Payload @Valid NotifyCustomer cmd) {
         log.warn(cmd.toString()); // tmp remove later
         // TODO
     }

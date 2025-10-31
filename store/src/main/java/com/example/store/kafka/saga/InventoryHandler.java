@@ -2,7 +2,6 @@ package com.example.store.kafka.saga;
 
 import com.example.store.config.KafkaTopicProperties;
 import com.example.store.dto.inventory.InventoryAllocationDTO;
-import com.example.store.dto.inventory.InventoryRequestItem;
 import com.example.store.enums.AggregateType;
 import com.example.store.enums.ReservationStatus;
 import com.example.store.exception.InsufficientStockException;
@@ -15,12 +14,14 @@ import com.example.store.kafka.event.InventoryReserved;
 import com.example.store.model.Outbox;
 import com.example.store.service.OutboxService;
 import com.example.store.service.WarehouseService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -41,33 +42,28 @@ public class InventoryHandler {
     // === Consume ReserveInventory command
     // === Outbox InventoryReserved or InventoryOutOfStock
     @KafkaHandler
-    public void on(@Payload ReserveInventory cmd) {
-        log.info("Processing ReserveInventory order={} items={} createdAt={}", cmd.orderNumber(), cmd.items().size(), cmd.createdAt());
-
-        List<InventoryRequestItem> items = cmd.items().stream()
-                .map(item -> new InventoryRequestItem(item.productCode(), item.quantity()))
-                .toList();
+    @Transactional(noRollbackFor = InsufficientStockException.class)
+    public void on(@Payload @Valid ReserveInventory cmd) {
+        log.info("@ ReserveInventory: order={} items={} createdAt={}", cmd.orderNumber(), cmd.items().size(), cmd.createdAt());
 
         try {
-            InventoryAllocationDTO allocation = warehouseService.reserveInventory(
-                    cmd.orderNumber(),
-                    cmd.idempotencyKey(),
-                    items);
+            InventoryAllocationDTO allocation = warehouseService.reserveInventory(cmd);
 
             InventoryReserved evt = InventoryReserved.of(allocation);
             emitEvent(cmd.orderNumber(), evt.getClass(), evt);
 
-        } catch (InsufficientStockException ex) {
-            log.warn("Inventory insufficient for order={} missing={}", cmd.orderNumber(), ex.getMissing());
+        } catch (InsufficientStockException ex) {  // no rollback for business failure
+            log.warn(
+                "@ ReserveInventory: Inventory insufficient for order={} missing={}",
+                cmd.orderNumber(), ex.getMissing())
+            ;
             InventoryOutOfStock evt = InventoryOutOfStock.of(
-                    cmd.orderNumber(),
-                    cmd.idempotencyKey(),
-                    ex.getMissing(),
-                    ex.getMessage());
+                cmd.orderNumber(), ex.getMissing()
+            );
             emitEvent(cmd.orderNumber(), evt.getClass(), evt);
 
         } catch (Exception ex) {
-            log.error("Failed to reserve inventory for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);
+            log.error("@ ReserveInventory: Failed to reserve inventory for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);
             throw ex;
         }
     }
@@ -75,8 +71,8 @@ public class InventoryHandler {
     // === Consume ReleaseInventory command
     // === Outbox InventoryReleased
     @KafkaHandler
-    public void on(@Payload ReleaseInventory cmd) {
-        log.info("Processing ReleaseInventory order={} reason={}", cmd.orderNumber(), cmd.reason());
+    public void on(@Payload @Valid ReleaseInventory cmd) {
+        log.info("@ ReleaseInventory: order={} reason={}", cmd.orderNumber(), cmd.reason());
 
         try {
             InventoryAllocationDTO allocation = warehouseService.releaseReservation(
@@ -87,7 +83,7 @@ public class InventoryHandler {
             emitEvent(cmd.orderNumber(), evt.getClass(), evt);
 
         } catch (ResourceNotFoundException ex) {
-            log.warn("Reservation not found when releasing inventory for order={}, treating as idempotent", cmd.orderNumber());
+            log.warn("@ ReleaseInventory: Reservation not found when releasing inventory for order={}, treating as idempotent", cmd.orderNumber());
             InventoryAllocationDTO empty = new InventoryAllocationDTO(
                     cmd.orderNumber(),
                     cmd.idempotencyKey(),
@@ -97,11 +93,12 @@ public class InventoryHandler {
             emitEvent(cmd.orderNumber(), evt.getClass(), evt);
 
         } catch (Exception ex) {
-            log.error("Failed to release inventory for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);
+            log.error("@ ReleaseInventory: Failed to release inventory for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);
             throw ex;
         }
     }
 
+    // - helper
     private void emitEvent(String aggregateId, Class<?> type, Object payload) {
         Outbox outbox = new Outbox();
         outbox.setAggregateId(aggregateId);

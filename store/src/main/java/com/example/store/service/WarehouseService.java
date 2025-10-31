@@ -3,18 +3,14 @@ package com.example.store.service;
 import com.example.store.dto.inventory.AssignStockDTO;
 import com.example.store.dto.inventory.CreateWarehouseDTO;
 import com.example.store.dto.inventory.InventoryAllocationDTO;
-import com.example.store.dto.inventory.InventoryRequestItem;
+import com.example.store.dto.inventory.ReserveItemDTO;
 import com.example.store.dto.inventory.StockDTO;
 import com.example.store.dto.inventory.WarehouseDTO;
 import com.example.store.enums.ReservationStatus;
 import com.example.store.exception.InsufficientStockException;
 import com.example.store.exception.ResourceNotFoundException;
-import com.example.store.model.InventoryReservation;
-import com.example.store.model.InventoryReservationItem;
-import com.example.store.model.Product;
-import com.example.store.model.Stock;
-import com.example.store.model.Warehouse;
-import com.example.store.model.WarehouseStockManager;
+import com.example.store.kafka.command.ReserveInventory;
+import com.example.store.model.*;
 import com.example.store.repository.ProductRepository;
 import com.example.store.repository.StockRepository;
 import com.example.store.repository.WarehouseRepository;
@@ -23,7 +19,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -40,6 +37,7 @@ public class WarehouseService {
     private final WarehouseStockManager manager;
     private final ModelMapper modelMapper;
 
+    // === warehouses
     @Transactional
     public WarehouseDTO createWarehouse(CreateWarehouseDTO warehouseDto) {
         Warehouse warehouse = toEntity(warehouseDto);
@@ -83,6 +81,7 @@ public class WarehouseService {
         return toResponse(warehouse);
     }
 
+    // === Stocks
     @Transactional
     public StockDTO assignStock(AssignStockDTO stockDto) {
         // get existing or throw
@@ -181,7 +180,7 @@ public class WarehouseService {
         return saved.stream().map(this::toResponse).toList();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<StockDTO> getStocksByWarehouseCode(String warehouseCode) {
         Warehouse warehouse = warehouseRepository.findByWarehouseCodeOrThrow(warehouseCode);
 
@@ -191,7 +190,7 @@ public class WarehouseService {
                 .toList();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<StockDTO> getStocksByProductCode(String productCode) {
         Product product = productRepository.findByProductCodeOrThrow(productCode);
 
@@ -201,49 +200,60 @@ public class WarehouseService {
                 .toList();
     }
 
-    // === Reservation APIs (saga entry points) ===
+    // === Reservations
+    @Transactional(
+        propagation = Propagation.REQUIRED,
+        noRollbackFor = InsufficientStockException.class
+    ) // no rollback for business failure
+    public InventoryAllocationDTO reserveInventory(ReserveInventory cmd) {
+        final String orderNumber = cmd.orderNumber();
+        final String idempotencyKey = cmd.idempotencyKey();
 
-    @Transactional
-    public InventoryAllocationDTO reserveInventory(String orderNumber,
-                                                   String idempotencyKey,
-                                                   List<InventoryRequestItem> requestItems) {
+        // 0. Merge duplicate request items (already validated)
+        Map<String, Integer> required = aggregateReserveItems(cmd.items());
 
-        Map<String, Integer> required = normaliseRequest(requestItems);
-        if (required.isEmpty()) {
-            throw new IllegalArgumentException("At least one item is required to reserve inventory");
+        // 1. Lock-or-create reservation row
+        InventoryReservation res = reservationRepository.findByOrderNumberForUpdate(orderNumber)
+            .orElseGet(() -> {
+                InventoryReservation r = new InventoryReservation();
+                r.setOrderNumber(orderNumber);
+                r.setIdempotencyKey(idempotencyKey);
+                return reservationRepository.save(r);
+            });
+
+        // 2. Idempotency semantics (no retry)
+        if (!Objects.equals(res.getIdempotencyKey(), idempotencyKey)) {
+            throw new IllegalStateException("[Reserve Inventory] Idempotency conflict for order " + orderNumber);
         }
 
-        InventoryReservation existing = reservationRepository.findByOrderNumber(orderNumber).orElse(null);
-        if (existing != null) {
-            if (!Objects.equals(existing.getIdempotencyKey(), idempotencyKey)
-                    && existing.getStatus() == ReservationStatus.RESERVED) {
-                throw new IllegalStateException("Idempotency conflict for order " + orderNumber);
-            }
-
-            if (existing.getStatus() == ReservationStatus.RESERVED
-                    || existing.getStatus() == ReservationStatus.COMMITTED
-                    || existing.getStatus() == ReservationStatus.RELEASED) {
-                log.debug("Inventory already processed for order={} status={} - returning cached plan",
-                        orderNumber, existing.getStatus());
-                return toAllocationDto(existing);
-            }
+        // 3. Short-circuit terminal states (same key)
+        if (res.isTerminal()) {
+            log.debug("Inventory already processed for order={} status={} - returning cached plan", orderNumber, res.getStatus());
+            return toAllocationDto(res);
         }
 
+        // 4. Claim work
+        res.setStatus(ReservationStatus.IN_PROGRESS);
+        reservationRepository.save(res);
+
+        // 5. Check product code exists
         productRepository.findAllByProductCodeInOrThrow(required.keySet());
 
+        // 6. Lock stock rows for all requested products
         List<Stock> stocks = stockRepository.findAllByProductCodesForUpdate(required.keySet());
         Map<String, List<Stock>> stocksByProduct = stocks.stream()
                 .collect(Collectors.groupingBy(s -> s.getProduct().getProductCode()));
 
+        // 7. Check availability
         List<InsufficientStockException.MissingItem> missing = new ArrayList<>();
         for (Map.Entry<String, Integer> entry : required.entrySet()) {
             String productCode = entry.getKey();
             int needed = entry.getValue();
 
             int available = stocksByProduct.getOrDefault(productCode, List.of())
-                    .stream()
-                    .mapToInt(stock -> stock.getOnHand() - stock.getReserved())
-                    .sum();
+                .stream()
+                .mapToInt(stock -> stock.getOnHand() - stock.getReserved())
+                .sum();
 
             if (available < needed) {
                 missing.add(new InsufficientStockException.MissingItem(productCode, needed, available));
@@ -251,9 +261,14 @@ public class WarehouseService {
         }
 
         if (!missing.isEmpty()) {
+            // mark reservation failed (idempotent result)
+            res.setStatus(ReservationStatus.FAILED);
+            res.setFailureReason("Insufficient stock for one or more items");
+            reservationRepository.save(res);
             throw new InsufficientStockException("Not enough stock to fulfill order " + orderNumber, missing);
         }
 
+        // 8. Compute allocation plan (your existing logic)
         Map<Stock, Integer> availableByStock = new HashMap<>();
         for (Stock stock : stocks) {
             availableByStock.put(stock, stock.getOnHand() - stock.getReserved());
@@ -267,12 +282,9 @@ public class WarehouseService {
             stock.setReserved(newReserved);
         });
 
-        InventoryReservation reservation = existing != null ? existing : new InventoryReservation();
-        reservation.setOrderNumber(orderNumber);
-        reservation.setIdempotencyKey(idempotencyKey);
-        reservation.setFailureReason(null);
-        reservation.setStatus(ReservationStatus.RESERVED);
-        reservation.getItems().clear();
+        // 10) Persist final reservation snapshot
+        res.setStatus(ReservationStatus.RESERVED);
+        res.getItems().clear();
 
         for (Map.Entry<Warehouse, Map<Product, Integer>> entry : computation.plan().entrySet()) {
             Warehouse warehouse = entry.getKey();
@@ -281,21 +293,24 @@ public class WarehouseService {
                 item.setWarehouse(warehouse);
                 item.setProduct(itemEntry.getKey());
                 item.setQuantity(itemEntry.getValue());
-                reservation.addItem(item);
+                res.addItem(item);
             }
         }
 
-        InventoryReservation saved = reservationRepository.save(reservation);
-        log.info("Reserved inventory for order={} warehouses={}", orderNumber,
-                saved.getItems().stream()
-                        .map(i -> i.getWarehouse().getWarehouseCode())
-                        .distinct()
-                        .toList());
+        InventoryReservation saved = reservationRepository.save(res);
+        log.info(
+            "Reserved inventory for order={} warehouses={}",
+            orderNumber,
+            saved.getItems().stream()
+                .map(i -> i.getWarehouse().getWarehouseCode())
+                .distinct()
+                .toList()
+        );
 
         return toAllocationDto(saved);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRED)
     public InventoryAllocationDTO releaseReservation(String orderNumber, String reason) {
         InventoryReservation reservation = reservationRepository.findByOrderNumber(orderNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Reservation not found for order " + orderNumber));
@@ -330,7 +345,7 @@ public class WarehouseService {
         return toAllocationDto(reservation);
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRED)
     public InventoryAllocationDTO commitReservation(String orderNumber) {
         InventoryReservation reservation = reservationRepository.findByOrderNumber(orderNumber)
                 .orElseThrow(() -> new ResourceNotFoundException("Reservation not found for order " + orderNumber));
@@ -389,22 +404,15 @@ public class WarehouseService {
         return dto;
     }
 
-    private Map<String, Integer> normaliseRequest(List<InventoryRequestItem> requestItems) {
-        Map<String, Integer> required = new LinkedHashMap<>();
-        for (InventoryRequestItem item : requestItems) {
-            if (item == null) continue;
-            String productCode = Optional.ofNullable(item.productCode())
-                    .map(String::trim)
-                    .orElseThrow(() -> new IllegalArgumentException("Product code cannot be null"));
-            if (productCode.isEmpty()) {
-                throw new IllegalArgumentException("Product code cannot be blank");
-            }
-            if (item.quantity() <= 0) {
-                throw new IllegalArgumentException("Quantity must be positive for product " + productCode);
-            }
-            required.merge(productCode, item.quantity(), Integer::sum);
-        }
-        return required;
+    // -- helper
+    private Map<String, Integer> aggregateReserveItems(List<ReserveItemDTO> items) {
+        // items is guaranteed non-null & non-empty by @NotEmpty on ReserveInventory.items
+        // productCode is exactly 30 chars, quantity >= 1 by DTO validation
+        return items.stream().collect(
+            LinkedHashMap::new,
+            (map, i) -> map.merge(i.productCode(), i.quantity(), Math::addExact),
+            Map::putAll
+        );
     }
 
     private Optional<AllocationComputation> trySingleWarehouse(Map<String, Integer> required,

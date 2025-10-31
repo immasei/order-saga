@@ -2,6 +2,7 @@ package com.example.store.kafka.saga;
 
 import com.example.store.kafka.command.ChargePayment;
 import com.example.store.kafka.command.RefundPayment;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaHandler;
@@ -21,7 +22,7 @@ public class PaymentHandler {
     // === Consume ChargePayment command
     // === Outbox PaymentSucceeded or PaymentFailed
     @KafkaHandler
-    public void on(@Payload ChargePayment cmd) {
+    public void on(@Payload @Valid ChargePayment cmd) {
         log.warn(cmd.toString()); // tmp remove later
         // TODO
     }
@@ -29,7 +30,7 @@ public class PaymentHandler {
     // === Consume RefundPayment command
     // === Outbox PaymentSucceeded or PaymentFailed
     @KafkaHandler
-    public void on(@Payload RefundPayment cmd) {
+    public void on(@Payload @Valid RefundPayment cmd) {
         log.warn(cmd.toString()); // tmp remove later
         // TODO
     }

@@ -1,10 +1,13 @@
 package com.example.store.enums;
 
 public enum ReservationStatus {
+    PENDING,
+    IN_PROGRESS,
     RESERVED,
-    RELEASED,
     COMMITTED,
-    FAILED
+    RELEASED,
+    FAILED,
+    CANCELLED
 }
 
 

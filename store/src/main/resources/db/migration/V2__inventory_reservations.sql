@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS public.inventory_reservation (
     updated_at       timestamp(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT inventory_reservation_pkey PRIMARY KEY (id),
-    CONSTRAINT uk_inventory_reservation_order UNIQUE (order_number)
+    CONSTRAINT uk_inventory_reservation_order UNIQUE (order_number),
+    CONSTRAINT uk_inventory_reservation_idempo UNIQUE (idempotency_key)
 );
 
 CREATE TABLE IF NOT EXISTS public.inventory_reservation_item (
@@ -38,5 +39,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS uk_inventory_res_items_res_wh_prod
 
 CREATE INDEX IF NOT EXISTS idx_inventory_res_item_reservation
     ON public.inventory_reservation_item (reservation_id);
+
 
 

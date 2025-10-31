@@ -1,6 +1,7 @@
 package com.example.store.kafka.saga;
 
 import com.example.store.kafka.command.CreateShipment;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaHandler;
@@ -21,7 +22,7 @@ public class ShippingHandler {
     // === Consume CreateShipment command
     // === Outbox ShipmentCreated or ShipmentFailed
     @KafkaHandler
-    public void on(@Payload CreateShipment cmd) {
+    public void on(@Payload @Valid CreateShipment cmd) {
         log.warn(cmd.toString()); // tmp remove later
         // TODO
     }

@@ -206,7 +206,7 @@ Polymorphism and inheritance are used to generalize behavior:
     http://localhost:8080/api/products
     ```
 
-#### Get warehouse by productCode
+#### Get product by productCode
 - **GET**
     ```
     http://localhost:8080/api/products/{productCode}

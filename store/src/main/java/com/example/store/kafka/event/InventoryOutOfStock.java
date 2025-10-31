@@ -1,31 +1,27 @@
 package com.example.store.kafka.event;
 
+import com.example.store.enums.EventType;
 import com.example.store.exception.InsufficientStockException;
+import lombok.Builder;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Builder
 public record InventoryOutOfStock(
-        String orderNumber,
-        String idempotencyKey,
-        List<MissingItem> missingItems,
-        String reason,
-        LocalDateTime detectedAt
+    String orderNumber,
+    List<InsufficientStockException.MissingItem> missingItems,
+    EventType reason,
+    LocalDateTime detectedAt
 ) {
-    public record MissingItem(
-            String productCode,
-            int required,
-            int available
-    ) {}
-
-    public static InventoryOutOfStock of(String orderNumber,
-                                         String idempotencyKey,
-                                         List<InsufficientStockException.MissingItem> missing,
-                                         String reason) {
-        List<MissingItem> mapped = missing.stream()
-                .map(m -> new MissingItem(m.productCode(), m.required(), m.available()))
-                .toList();
-
-        return new InventoryOutOfStock(orderNumber, idempotencyKey, mapped, reason, LocalDateTime.now());
+    public static InventoryOutOfStock of(
+        String orderNumber, List<InsufficientStockException.MissingItem> missing
+    ) {
+        return InventoryOutOfStock.builder()
+                .orderNumber(orderNumber)
+                .missingItems(missing)
+                .reason(EventType.INVENTORY_OUT_OF_STOCK)
+                .detectedAt(LocalDateTime.now())
+                .build();
     }
 }

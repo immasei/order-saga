@@ -59,6 +59,9 @@ public class SagaOrchestrator {
     @KafkaHandler
     public void on(@Payload InventoryReserved evt) {
         log.warn(evt.toString()); // tmp fix later
+
+        // 1. build command
+        ChargePayment cmd = ChargePayment.of(evt);
     }
 
     //  Consume InventoryOutOfStock event
