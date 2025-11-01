@@ -29,19 +29,19 @@ public class InventoryHandler {
     // === Outbox InventoryReserved or InventoryOutOfStock
     @KafkaHandler
     public void on(@Payload @Valid ReserveInventory cmd) {
-        log.info("@ ReserveInventory: order={} items={} createdAt={}", cmd.orderNumber(), cmd.items().size(), cmd.createdAt());
+        log.info("@ ReserveInventory: [STORE][SUCCESS] for order={} items={} createdAt={}", cmd.orderNumber(), cmd.items().size(), cmd.createdAt());
 
         try {
             // mark reserved
             reservationService.reserveInventory(cmd);
 
         } catch (InsufficientStockException ex) {
-            log.warn("@ ReserveInventory: Inventory insufficient for order={} missing={}", cmd.orderNumber(), ex.getMissing());
+            log.warn("@ ReserveInventory: [STORE][FAILED] Inventory insufficient for order={} missing={}", cmd.orderNumber(), ex.getMissing());
             // mark out of stock
             reservationService.onInventoryOutOfStock(cmd, ex.getMissing());
 
         } catch (Exception ex) {
-            log.error("@ ReserveInventory: Failed to reserve inventory for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);
+            log.error("@ ReserveInventory: [STORE][UNEXPECTED] Failed to reserve inventory for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);
             throw ex;
         }
     }
@@ -50,17 +50,16 @@ public class InventoryHandler {
     // === Outbox InventoryReleased
     @KafkaHandler
     public void on(@Payload @Valid ReleaseInventory cmd) {
-        log.info("@ ReleaseInventory: order={} reason={}", cmd.orderNumber(), cmd.reason());
-
         try {
             reservationService.releaseReservation(cmd);
+            log.info("@ ReleaseInventory: [STORE][SUCCESS] fir order={} reason={}", cmd.orderNumber(), cmd.reason());
 
         } catch (ResourceNotFoundException ex) {
-            log.warn("@ ReleaseInventory: Reservation not found when releasing inventory for order={}, treating as idempotent", cmd.orderNumber());
+            log.warn("@ ReleaseInventory: [STORE][FAILED] Reservation not found when releasing inventory for order={}, treating as idempotent", cmd.orderNumber());
             reservationService.onOrphanInventoryRelease(cmd);
 
         } catch (Exception ex) {
-            log.error("@ ReleaseInventory: Failed to release inventory for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);
+            log.error("@ ReleaseInventory: [STORE][UNEXPECTED] Failed to release inventory for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);
             throw ex;
         }
     }

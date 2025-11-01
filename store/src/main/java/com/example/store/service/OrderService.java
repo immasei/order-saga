@@ -79,7 +79,6 @@ public class OrderService {
         Order order = toEntity(orderDto);
         order.setCustomer(user);
         order.setIdempotencyKey(idempotencyKey);
-        System.out.println(order); //ok
 
         order.getOrderItems().clear();
         if (orderDto.getDeliveryAddress() == null)
@@ -106,8 +105,7 @@ public class OrderService {
             item.computeLineTotal();
         }
 
-        Order saved = orderRepository.saveAndFlush(order);//throw
-        System.out.println(saved.getIdempotencyKey());//dont reach
+        Order saved = orderRepository.saveAndFlush(order);
         return toResponse(saved);
     }
 

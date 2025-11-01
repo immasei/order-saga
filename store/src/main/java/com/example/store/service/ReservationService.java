@@ -233,7 +233,9 @@ public class ReservationService {
         reservation.setStatus(ReservationStatus.COMMITTED);
         reservation.setFailureReason(null);
 
-        return toAllocationDto(reservation);
+        Reservation saved = reservationRepository.saveAndFlush(reservation);
+
+        return toAllocationDto(saved);
     }
 
     @Transactional
