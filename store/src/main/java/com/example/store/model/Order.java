@@ -67,6 +67,9 @@ public class Order {
     @Column(length=80, nullable=false, updatable=false, unique=true)
     private String idempotencyKey;
 
+    @Column(updatable=false, unique=true)
+    private UUID deliveryTrackingId;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems = new ArrayList<>();
 

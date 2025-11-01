@@ -1,10 +1,10 @@
 package com.example.store.service;
 
 import com.example.store.config.KafkaTopicProperties;
-import com.example.store.dto.bank.BankErrorResponse;
-import com.example.store.dto.bank.PaymentResponseDTO;
-import com.example.store.dto.bank.RefundDTO;
-import com.example.store.dto.bank.TransferDTO;
+import com.example.store.dto.payment.ErrorResponse;
+import com.example.store.dto.payment.PaymentResponseDTO;
+import com.example.store.dto.payment.RefundDTO;
+import com.example.store.dto.payment.TransferDTO;
 import com.example.store.enums.AggregateType;
 import com.example.store.enums.PaymentStatus;
 import com.example.store.exception.BankException;
@@ -35,6 +35,7 @@ public class PaymentService {
 
     @Qualifier("bankWebClient")
     private final WebClient bankWebClient;
+
     private final OrderRepository orderRepository;
     private final OutboxService outboxService;
     private final KafkaTopicProperties kafkaProps;
@@ -44,11 +45,9 @@ public class PaymentService {
     private String bankAccountRef;
 
     public PaymentResponseDTO transfer(ChargePayment cmd) {
-        Order o = orderRepository.findByOrderNumberOrThrow(cmd.orderNumber());
-
         var req = new TransferDTO();
-        req.setAmount(o.getTotal());
-        req.setFromAccountRef(o.getPaymentAccountRef());
+        req.setAmount(cmd.amount());
+        req.setFromAccountRef(cmd.paymentAccountRef());
         req.setToAccountRef(bankAccountRef);
         req.setMemo("Payment for Order: " + cmd.orderNumber());
 
@@ -58,14 +57,14 @@ public class PaymentService {
             .retrieve()
             // handle non-2xx responses
             .onStatus(HttpStatusCode::isError, resp ->
-                resp.bodyToMono(BankErrorResponse.class)
+                resp.bodyToMono(ErrorResponse.class)
                     .map(err -> new BankException(
                         err.getStatus(),
                         err.getMessage()
                     ))
             )
             .bodyToMono(PaymentResponseDTO.class)
-            .doOnNext(b -> log.info("> Transfer: Bank response: {}", b))
+            .doOnNext(b -> log.info("@ ChargePayment: [Transfer] Bank response: {}", b))
             .timeout(Duration.ofSeconds(5))
             .block();
     }
@@ -84,14 +83,14 @@ public class PaymentService {
                 .retrieve()
                 // handle non-2xx responses
                 .onStatus(HttpStatusCode::isError, resp ->
-                        resp.bodyToMono(BankErrorResponse.class)
+                        resp.bodyToMono(ErrorResponse.class)
                                 .map(err -> new BankException(
                                         err.getStatus(),
                                         err.getMessage()
                                 ))
                 )
                 .bodyToMono(RefundDTO.class)
-                .doOnNext(b -> log.info("> Refund: Bank response: {}", b))
+                .doOnNext(b -> log.info("@ ChargePayment: [Refund] Bank response: {}", b))
                 .timeout(Duration.ofSeconds(5))
                 .block();
     }

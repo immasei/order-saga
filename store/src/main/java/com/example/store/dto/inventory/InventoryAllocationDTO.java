@@ -1,6 +1,7 @@
 package com.example.store.dto.inventory;
 
 import com.example.store.enums.ReservationStatus;
+import lombok.ToString;
 
 import java.util.List;
 
@@ -12,6 +13,7 @@ public record InventoryAllocationDTO(
 ) {
     public record WarehouseAllocationDTO(
         String warehouseCode,
+        String warehouseAddress,
         List<ItemAllocationDTO> items
     ) {}
 

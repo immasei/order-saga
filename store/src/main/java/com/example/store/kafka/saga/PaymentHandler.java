@@ -1,7 +1,6 @@
 package com.example.store.kafka.saga;
 
-import com.example.store.dto.bank.PaymentResponseDTO;
-import com.example.store.dto.bank.RefundDTO;
+import com.example.store.dto.payment.PaymentResponseDTO;
 import com.example.store.exception.BankException;
 import com.example.store.kafka.command.ChargePayment;
 import com.example.store.kafka.command.RefundPayment;
@@ -35,13 +34,14 @@ public class PaymentHandler {
         try {
             PaymentResponseDTO payment = paymentService.transfer(cmd);
             paymentService.onPaymentSucceed(cmd, payment);
+            log.info("@ ChargePayment: [BANK][SUCCESS] for order={}, createdAt={}", cmd.orderNumber(), cmd.createdAt());
 
         } catch (BankException ex) {
-            log.warn("@ ChargePayment: Payment failed for order={}, status={}, message={}", cmd.orderNumber(), ex.getStatusCode(), ex.getMessage());
+            log.warn("@ ChargePayment: [BANK][FAILED] for order={}, status={}, message={}", cmd.orderNumber(), ex.getStatusCode(), ex.getMessage());
             paymentService.onPaymentFailed(cmd);
 
         } catch (Exception ex) {
-            log.error("@ ChargePayment: Failed to charge paymeng for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);
+            log.error("@ ChargePayment: [BANK][UNEXPECTED] Failed charge payment for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);
             throw ex;
         }
     }

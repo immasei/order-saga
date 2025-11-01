@@ -1,11 +1,11 @@
-package com.example.store.dto.bank;
+package com.example.store.dto.payment;
 
 import lombok.*;
 
 @Getter
 @Setter
 @NoArgsConstructor
-public class BankErrorResponse {
+public class ErrorResponse {
 
     private int status;
     private String error;
