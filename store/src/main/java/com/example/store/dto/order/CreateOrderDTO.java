@@ -22,7 +22,7 @@ public class CreateOrderDTO {
     private String deliveryAddress;
 
     @NotNull(message = "Shipping fee is required.")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Shipping fee must be positive.")
+    @DecimalMin(value = "0.0", message = "Shipping fee must be positive.")
     @Digits(integer = 13, fraction = 2, message = "Shipping fee must have at most 13 digits and 2 decimal places")
     private BigDecimal shipping;
 

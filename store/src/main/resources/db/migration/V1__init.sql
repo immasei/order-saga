@@ -53,18 +53,19 @@ CREATE TABLE IF NOT EXISTS public.warehouse_stock (
 ) PARTITION BY LIST (warehouse_id);
 
 CREATE TABLE IF NOT EXISTS public.orders (
-    id                uuid          NOT NULL,
-    delivery_address  varchar(255)  NOT NULL,
-    order_number      varchar(30)   NOT NULL,
-    placed_at         timestamp(6)  NOT NULL,
-    shipping          numeric(15,2) NOT NULL,
-    status            varchar(100)   NOT NULL,
-    sub_total         numeric(15,2) NOT NULL,
-    tax               numeric(15,2) NOT NULL,
-    total             numeric(15,2) NOT NULL,
-    customer_id       uuid          NOT NULL,
-    idempotency_key   varchar(80)   NOT NULL,
-    payment_account_ref varchar(100)  NOT NULL
+    id                   uuid          NOT NULL,
+    delivery_address     varchar(255)  NOT NULL,
+    order_number         varchar(30)   NOT NULL,
+    placed_at            timestamp(6)  NOT NULL,
+    shipping             numeric(15,2) NOT NULL,
+    status               varchar(100)   NOT NULL,
+    sub_total            numeric(15,2) NOT NULL,
+    tax                  numeric(15,2) NOT NULL,
+    total                numeric(15,2) NOT NULL,
+    customer_id          uuid          NOT NULL,
+    idempotency_key      varchar(80)   NOT NULL,
+    payment_account_ref  varchar(100)  NOT NULL,
+    delivery_tracking_id uuid          NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.order_item (

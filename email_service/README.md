@@ -1,5 +1,10 @@
 ### Email Service
 
+- Backend & Frontend
+  ```
+  http://localhost:8083
+  ```
+
 A standalone Spring Boot service that simulates sending and tracking emails for the Store system. It persists email messages, exposes REST APIs to send and query them, and logs a simulated "send" action instead of sending real emails.
 
 ### Folder structure

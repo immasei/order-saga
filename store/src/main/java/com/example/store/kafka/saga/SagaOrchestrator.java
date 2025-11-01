@@ -37,7 +37,7 @@ public class SagaOrchestrator {
     //  Outbox ReserveInventory
     @KafkaHandler
     public void on(@Payload OrderPlaced evt) {
-        log.warn(evt.toString()); // tmp fix later
+        log.info("@ OrderPlaced for order={}", evt.orderNumber());
         orchestrator.onOrderPlaced(evt);
 
     }
@@ -47,7 +47,7 @@ public class SagaOrchestrator {
     //  Outbox ChargePayment
     @KafkaHandler
     public void on(@Payload InventoryReserved evt) {
-        log.warn(evt.toString()); // tmp fix later
+        log.info("@ InventoryReserved for order={}", evt.orderNumber());
         orchestrator.onInventoryReserved(evt);
     }
 
@@ -63,7 +63,8 @@ public class SagaOrchestrator {
     //  Outbox CreateShipment
     @KafkaHandler
     public void on(@Payload PaymentSucceeded evt) {
-        log.warn(evt.toString()); // tmp fix later
+        log.info("@ PaymentSucceeded for order={}", evt.orderNumber());
+        orchestrator.onPaymentSucceeded(evt);
     }
 
     //  Consume PaymentFailed event
@@ -78,7 +79,8 @@ public class SagaOrchestrator {
     //  Outbox NotifyCustomer
     @KafkaHandler
     public void on(@Payload ShipmentCreated evt) {
-        log.warn(evt.toString()); // tmp fix later
+        log.info("@ ShipmentCreated for order={}", evt.orderNumber());
+        orchestrator.onShipmentCreated(evt);
     }
 
     //  Consume ShipmentFailed event

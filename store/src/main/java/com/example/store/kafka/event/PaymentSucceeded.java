@@ -1,6 +1,6 @@
 package com.example.store.kafka.event;
 
-import com.example.store.dto.bank.PaymentResponseDTO;
+import com.example.store.dto.payment.PaymentResponseDTO;
 import com.example.store.kafka.command.ChargePayment;
 import lombok.Builder;
 

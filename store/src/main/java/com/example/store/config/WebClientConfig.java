@@ -1,11 +1,15 @@
 package com.example.store.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.json.Jackson2JsonDecoder;
+import org.springframework.http.codec.json.Jackson2JsonEncoder;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
@@ -21,22 +25,22 @@ public class WebClientConfig {
 
     @Bean
     @Qualifier("bankWebClient")
-    public WebClient bankWebClient(WebClient.Builder builder) {   // <-- inject the Boot builder
+    public WebClient bankWebClient(WebClient.Builder builder) {
         return builder
             .baseUrl(props.getBank())
             .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
             .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
             .build();
     }
-}
 
-//
-//    @Bean
-//    @Qualifier("deliveryWebClient")
-//    public WebClient deliveryWebClient() {
-//        return WebClient.builder()
-//                .baseUrl(props.getDeliveryCo())
-//                .defaultHeader("Accept", "application/json")
-//                .build();
-//    }
-//}
+    @Bean
+    @Qualifier("deliveryWebClient")
+    public WebClient deliveryWebClient(WebClient.Builder builder) {
+        return builder
+                .baseUrl(props.getDeliveryCo())
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .build();
+    }
+
+}

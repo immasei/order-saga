@@ -405,16 +405,28 @@ public class ReservationService {
 
         List<InventoryAllocationDTO.WarehouseAllocationDTO> allocations = itemsByWarehouse.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
-                .map(entry -> new InventoryAllocationDTO.WarehouseAllocationDTO(
-                        entry.getKey(),
-                        entry.getValue().stream()
-                                .map(item -> new InventoryAllocationDTO.ItemAllocationDTO(
-                                        item.getProduct().getProductCode(),
-                                        item.getQuantity()
-                                ))
-                                .sorted(Comparator.comparing(InventoryAllocationDTO.ItemAllocationDTO::productCode))
-                                .toList()
-                ))
+                .map(entry -> {
+                    String warehouseCode = entry.getKey();
+                    List<ReservationItem> groupItems = entry.getValue();
+
+                    // Take the warehouse from the first item in this group
+                    Warehouse wh = groupItems.get(0).getWarehouse();
+                    String address = wh.getLocation();
+
+                    List<InventoryAllocationDTO.ItemAllocationDTO> items = groupItems.stream()
+                            .map(item -> new InventoryAllocationDTO.ItemAllocationDTO(
+                                    item.getProduct().getProductCode(),
+                                    item.getQuantity()
+                            ))
+                            .sorted(Comparator.comparing(InventoryAllocationDTO.ItemAllocationDTO::productCode))
+                            .toList();
+
+                    return new InventoryAllocationDTO.WarehouseAllocationDTO(
+                            warehouseCode,
+                            address,
+                            items
+                    );
+                })
                 .toList();
 
         return new InventoryAllocationDTO(
@@ -438,4 +450,30 @@ public class ReservationService {
         outbox.setTopic(kafkaProps.inventoryEvents());
         outboxService.save(outbox, payload);
     }
+
+    public Map<String, String> getPickupLocations(InventoryAllocationDTO reservation) {
+        Map<String, String> pickupLocations = reservation.allocations().stream()
+            .collect(Collectors.toMap(
+                InventoryAllocationDTO.WarehouseAllocationDTO::warehouseCode,
+                InventoryAllocationDTO.WarehouseAllocationDTO::warehouseAddress,
+                (a, b) -> a,
+                LinkedHashMap::new
+            ));
+        return pickupLocations;
+    }
+
+    public Map<String, Map<String, Integer>> getPickedItemsByWarehouse(InventoryAllocationDTO reservation) {
+        Map<String, Map<String, Integer>> productsByWarehouse = new HashMap<>();
+
+        for (InventoryAllocationDTO.WarehouseAllocationDTO wh : reservation.allocations()) {
+            Map<String, Integer> itemMap = new HashMap<>();
+            for (InventoryAllocationDTO.ItemAllocationDTO item : wh.items()) {
+                itemMap.put(item.productCode(), item.quantity());
+            }
+            productsByWarehouse.put(wh.warehouseCode(), itemMap);
+        }
+
+        return productsByWarehouse;
+    }
+
 }

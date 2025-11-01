@@ -1,5 +1,9 @@
 ## DeliveryCo Service
 
+```
+http://localhost:8081
+```
+
 DeliveryCo is a Spring Boot microservice responsible for orchestrating the lifecycle of parcel deliveries. It consumes delivery requests from the Store application, schedules asynchronous status transitions, and publishes the resulting state changes to Kafka so that downstream systems (Store, EmailService) can react.
 
 ### Architecture Overview

@@ -1,9 +1,12 @@
+server:
+  port: 8081
+
 spring:
   application:
     name: delivery-co
   datasource:
     url: jdbc:postgresql://localhost:15432/deliveryco
-    username: deliveryco
+    username: comp5348
     password: changeme
     driver-class-name: org.postgresql.Driver
   jpa:
