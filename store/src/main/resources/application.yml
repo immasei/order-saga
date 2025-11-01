@@ -57,3 +57,7 @@ app:
     delivery-co: http://localhost:8081
     bank: http://localhost:8082
     email: http://localhost:8083
+
+logging:
+  level:
+    com.example.store.kafka.saga: DEBUG

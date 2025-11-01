@@ -4,30 +4,22 @@ import com.example.store.config.KafkaTopicProperties;
 import com.example.store.dto.notification.EmailDTO;
 import com.example.store.dto.notification.EmailResponseDTO;
 import com.example.store.dto.payment.ErrorResponse;
-import com.example.store.dto.payment.PaymentResponseDTO;
-import com.example.store.dto.payment.TransferDTO;
 import com.example.store.enums.AggregateType;
 import com.example.store.enums.EmailStatus;
 import com.example.store.enums.EventType;
-import com.example.store.enums.PaymentStatus;
-import com.example.store.exception.BankException;
 import com.example.store.exception.EmailException;
-import com.example.store.kafka.command.ChargePayment;
 import com.example.store.kafka.command.NotifyCustomer;
 import com.example.store.kafka.event.EmailFailed;
 import com.example.store.kafka.event.EmailSent;
-import com.example.store.kafka.event.PaymentSucceeded;
 import com.example.store.model.EmailRecord;
 import com.example.store.model.Order;
 import com.example.store.model.Outbox;
-import com.example.store.model.Payment;
 import com.example.store.repository.EmailRecordRepository;
 import com.example.store.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,7 +32,7 @@ import java.time.LocalDateTime;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class EmailService {
+public class NotificationService {
     @Qualifier("emailWebClient")
     private final WebClient emailWebClient;
 
@@ -136,5 +128,4 @@ public class EmailService {
         outbox.setTopic(kafkaProps.notificationsEvents());
         outboxService.save(outbox, payload);
     }
-
 }

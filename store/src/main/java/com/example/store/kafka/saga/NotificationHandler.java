@@ -1,12 +1,9 @@
 package com.example.store.kafka.saga;
 
 import com.example.store.dto.notification.EmailResponseDTO;
-import com.example.store.dto.payment.PaymentResponseDTO;
-import com.example.store.exception.BankException;
 import com.example.store.exception.EmailException;
 import com.example.store.kafka.command.NotifyCustomer;
-import com.example.store.service.EmailService;
-import com.example.store.service.OutboxService;
+import com.example.store.service.NotificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +22,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class NotificationHandler {
 
-    private final EmailService emailService;
+    private final NotificationService emailService;
 
     // === Consume NotifyCustomer command
     // === Outbox EmailSent or EmailFailed
@@ -43,7 +40,6 @@ public class NotificationHandler {
         } catch (Exception ex) {
             log.error("@ NotifyCustomer: [EMAIL][UNEXPECTED] Failed to notify customer for order={}: {}", cmd.orderNumber(), ex.getMessage());
             emailService.markEmailFailed(cmd);
-//            throw ex;
         }
     }
 }

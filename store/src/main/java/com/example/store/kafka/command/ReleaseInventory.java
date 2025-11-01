@@ -1,14 +1,14 @@
 package com.example.store.kafka.command;
 
+import com.example.store.enums.EventType;
+import lombok.Builder;
+
 import java.time.LocalDateTime;
 
+@Builder
 public record ReleaseInventory(
         String orderNumber,
         String idempotencyKey,
-        String reason,
+        EventType reason,
         LocalDateTime createdAt
-) {
-    public static ReleaseInventory of(String orderNumber, String idempotencyKey, String reason) {
-        return new ReleaseInventory(orderNumber, idempotencyKey, reason, LocalDateTime.now());
-    }
-}
+) {}

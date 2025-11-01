@@ -39,8 +39,8 @@ public class PaymentHandler {
             paymentService.markPaymentFailed(cmd);
 
         } catch (Exception ex) {
-            log.error("@ ChargePayment: [BANK][UNEXPECTED] Failed charge payment for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);
-            throw ex;
+            log.error("@ ChargePayment: [BANK][UNEXPECTED] Failed charge payment for order={}: {}", cmd.orderNumber(), ex.getMessage());
+            paymentService.markPaymentFailed(cmd);
         }
     }
 
