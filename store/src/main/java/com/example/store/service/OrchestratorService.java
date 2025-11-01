@@ -98,7 +98,13 @@ public class OrchestratorService {
 
     @Transactional
     public void onShipmentCreated(ShipmentCreated evt) {
+        Order order = orderRepository
+                .findByOrderNumberForUpdateOrThrow(evt.orderNumber());
+        order.setStatus(OrderStatus.SHIPPED);
+        order.setDeliveryTrackingId(evt.deliveryTrackingId());
+        orderRepository.save(order);
 
+        reservationService.commitReservation(evt.orderNumber());
     }
 }
 
