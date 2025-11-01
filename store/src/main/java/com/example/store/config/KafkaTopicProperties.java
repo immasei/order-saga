@@ -1,4 +1,3 @@
-
 package com.example.store.config;
 
 import lombok.Getter;
@@ -9,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import java.util.Map;
 
 @Configuration
-@ConfigurationProperties(prefix = "kafka.topics")
+@ConfigurationProperties(prefix = "app.kafka")
 @Getter
 @Setter
 public class KafkaTopicProperties {
@@ -17,27 +16,12 @@ public class KafkaTopicProperties {
     private int partitions;
     private short replicas;
 
-    // Add constructor to initialize the map
-    public KafkaTopicProperties() {
-        // Initialize with default values to prevent NPE
-        this.topics = Map.of(
-                "orders", "orders",
-                "inventory", "inventory",
-                "payments", "payments",
-                "shipping", "shipping",
-                "notifications", "notifications"
-        );
-    }
-
     // === Generic helper ===
     public String commandsOf(String base) {
-        String topic = topics.get(base);
-        return topic != null ? topic + ".commands" : base + ".commands";
+        return topics.get(base) + ".commands";
     }
-
     public String eventsOf(String base) {
-        String topic = topics.get(base);
-        return topic != null ? topic + ".events" : base + ".events";
+        return topics.get(base) + ".events";
     }
 
     // === Convenience getters (readable in code) ===
@@ -55,4 +39,5 @@ public class KafkaTopicProperties {
 
     public String notificationsCommands() { return commandsOf("notifications"); }
     public String notificationsEvents()   { return eventsOf("notifications"); }
+
 }

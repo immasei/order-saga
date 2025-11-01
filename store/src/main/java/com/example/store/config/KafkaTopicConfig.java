@@ -17,13 +17,13 @@ public class KafkaTopicConfig {
     @Bean
     public List<NewTopic> kafkaTopics() {
         return props.getTopics().values().stream()
-            .flatMap(base ->
-                List.of(
-                    new NewTopic(props.commandsOf(base),     props.getPartitions(), props.getReplicas()),
-                    new NewTopic(props.eventsOf(base),       props.getPartitions(), props.getReplicas())
-                ).stream()
-            )
-            .collect(Collectors.toList());
+                .flatMap(base ->
+                        List.of(
+                                new NewTopic(props.commandsOf(base),     props.getPartitions(), props.getReplicas()),
+                                new NewTopic(props.eventsOf(base),       props.getPartitions(), props.getReplicas())
+                        ).stream()
+                )
+                .collect(Collectors.toList());
     }
 
 }
