@@ -24,6 +24,12 @@ public class GlobalExceptionHandler {
                 .body(ApiError.of(status, msg, req.getRequestURI(), sub));
     }
 
+    // 409 conflict ie idempotency key exists
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiError> conflict(ConflictException ex, HttpServletRequest req) {
+        return respond(HttpStatus.CONFLICT, ex.getMessage(), req, null);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiError> illegalArgument(IllegalArgumentException ex, HttpServletRequest req) {
         return respond(HttpStatus.BAD_REQUEST, ex.getMessage(), req, null);

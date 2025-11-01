@@ -20,7 +20,6 @@ public class KafkaTopicProperties {
     public String commandsOf(String base) {
         return topics.get(base) + ".commands";
     }
-
     public String eventsOf(String base) {
         return topics.get(base) + ".events";
     }
@@ -40,4 +39,5 @@ public class KafkaTopicProperties {
 
     public String notificationsCommands() { return commandsOf("notifications"); }
     public String notificationsEvents()   { return eventsOf("notifications"); }
+
 }

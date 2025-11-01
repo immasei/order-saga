@@ -26,6 +26,11 @@ repositories {
 
 dependencies {
 	implementation 'org.modelmapper:modelmapper:3.1.0'
+	implementation("org.springframework.boot:spring-boot-starter-json")
+	implementation("com.fasterxml.jackson.core:jackson-databind")
+	implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+	implementation("org.springframework.boot:spring-boot-starter-webflux")
+	runtimeOnly("io.netty:netty-resolver-dns-native-macos::osx-aarch_64")
 	implementation("com.github.f4b6a3:ulid-creator:5.2.3")
 	implementation "org.flywaydb:flyway-core"                 // keep your Boot-managed version or set a recent one
 	implementation "org.flywaydb:flyway-database-postgresql"

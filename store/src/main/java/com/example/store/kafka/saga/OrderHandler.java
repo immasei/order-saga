@@ -11,6 +11,7 @@ import com.example.store.service.OrderService;
 import com.example.store.service.OutboxService;
 import com.github.f4b6a3.ulid.UlidCreator;
 import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaHandler;
@@ -29,31 +30,6 @@ import org.springframework.stereotype.Component;
 public class OrderHandler {
 
     private final OrderService orderService;
-    private final OutboxService outboxService;
-    private final KafkaTopicProperties kafkaProps;
-
-    // === Entry point: user placed order, outbox OrderPlaced ===
-    @Transactional
-    public OrderDTO placeOrder(CreateOrderDTO orderDto) {
-        String idempotencyKey = UlidCreator.getMonotonicUlid().toString();
-
-        // 1. save order to db
-        OrderDTO order = orderService.createOrder(orderDto, idempotencyKey);
-
-        // 2. create OrderPlaced event (aka fact)
-        OrderPlaced evt = OrderPlaced.of(order, idempotencyKey);
-
-        // 3. save OrderCreated to db, this event will later be
-        //    published by kafka/OutboxPublisher
-        Outbox outbox = new Outbox();
-        outbox.setAggregateId(order.getOrderNumber());
-        outbox.setAggregateType(AggregateType.ORDER);
-        outbox.setEventType(evt.getClass().getName());
-        outbox.setTopic(kafkaProps.ordersEvents());
-        outboxService.save(outbox, evt);
-
-        return order;
-    }
 
     // === Consume CancelOrder command
     // (Based on Order.status)
@@ -63,7 +39,7 @@ public class OrderHandler {
     //      - RefundPayment event
     //      - NotifyCustomer event
     @KafkaHandler
-    public void on(@Payload CancelOrder cmd) {
+    public void on(@Payload @Valid CancelOrder cmd) {
         log.warn(cmd.toString()); // tmp remove later
         // TODO
     }

@@ -11,6 +11,11 @@ public class TransactionDTO {
 
     private TransactionType transactionType;
     private String memo;
+    private String idempotencyKey;
+
+    public String getMemo() {
+        return (memo == null) ? "" : memo;
+    }
 
 }
 

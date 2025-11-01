@@ -4,9 +4,11 @@ import com.example.bank.entity.Account;
 import com.example.bank.entity.Customer;
 import com.example.bank.exception.ResourceNotFoundException;
 import jakarta.persistence.LockModeType;
+import jakarta.persistence.QueryHint;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -17,56 +19,58 @@ import java.util.stream.Collectors;
 
 @Repository
 public interface AccountRepository extends JpaRepository<Account, Long> {
-    // Spring Data JPA will automatically generate the implementation.
-    // Find more about it at https://docs.spring.io/spring-data/jpa/reference/jpa/query-methods.html
-    Optional<Account> findByIdAndCustomer(long id, Customer customer);
-    Optional<Account> findByIdAndCustomer_Id(Long accountId, Long customerId);
-    List<Account> findAllByCustomer_Id(Long customerId);
+    Optional<Account> findByAccountRef(String accountRef);
+    Optional<Account> findByAccountRefAndAccountHolder_CustomerRef(String accountRef, String customerRef);
+    List<Account> findAllByAccountHolder(Customer customer);
+    List<Account> findAllByAccountHolder_CustomerRef(String customerRef);
 
-
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT a FROM Account a WHERE a.id = :id")
-    Optional<Account> findByIdForUpdate(@Param("id") long id);
-
-    @Query("SELECT a FROM Account a WHERE a.id IN :ids ORDER BY a.id")
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    List<Account> findByIdsForUpdateOrdered(@Param("ids") List<Long> ids);
-
-    default Account getOrThrow(long id) {
-        return findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + id));
+    default Account findByAccountRefOrThrow(String accountRef) {
+        return findByAccountRef(accountRef)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + accountRef));
     }
 
-    default Account getOrThrow(long customerId, long accountId) {
-        return findByIdAndCustomer_Id(accountId, customerId)
+    default Account findByAccountRefAndCustomerRefOrThrow(String accountRef, String customerRef) {
+        return findByAccountRefAndAccountHolder_CustomerRef(accountRef, customerRef)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        "Account id " + accountId + " not found for customer id " + customerId));
+                        "Account not found: " + accountRef + " for customer " + customerRef));
     }
 
-    default Account lockOrThrow(long id) {
-        return findByIdForUpdate(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + id));
-    }
+    // lock for update
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "0")) // NOWAIT; use "-2" for SKIP LOCKED if your JPA provider supports it
+    @Query("select a from Account a where a.accountRef in :refs")
+    List<Account> lockAllByAccountRefs(@Param("refs") List<String> refs);
 
-    default List<Account> lockOrThrow(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            throw new IllegalArgumentException("No account ids provided");
+    // lock for update or throw
+    default List<Account> lockOrThrowByRefsInDeterministicOrder(List<String> inputRefs) {
+        var dedup = inputRefs.stream().distinct().toList();
+        if (dedup.size() != 2) {
+            throw new IllegalArgumentException("Exactly 2 distinct account refs required.");
         }
+        // Always lock in deterministic order to avoid deadlocks
+        var sorted = dedup.stream().sorted().toList();
 
-        // ensure deterministic order for deadlock prevention
-        List<Long> sortedIds = ids.stream().sorted().toList();
-        List<Account> locked = findByIdsForUpdateOrdered(sortedIds);
-
-        if (locked.size() != sortedIds.size()) {
-            throw new ResourceNotFoundException(
-                "Some accounts not found: expected " + sortedIds.size() + " but found " + locked.size()
+        List<Account> locked = lockAllByAccountRefs(sorted);
+        if (locked.size() != 2) {
+            throw new com.example.bank.exception.ResourceNotFoundException(
+                    "One or more accounts not found: " + dedup
             );
         }
-
-        // restore original order for caller readability
-        Map<Long, Account> map = locked.stream()
-                .collect(Collectors.toMap(Account::getId, a -> a));
-
-        return ids.stream().map(map::get).toList();
+        // Return in the SAME order as 'sorted'
+        locked.sort(java.util.Comparator.comparing(Account::getAccountRef));
+        return locked;
     }
+
+    // lock for update
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "0")) // NOWAIT (fail fast)
+    @Query("select a from Account a where a.accountRef = :ref")
+    Optional<Account> lockByAccountRef(@Param("ref") String ref);
+
+    // lock for update or throw
+    default Account lockOrThrowByRef(String ref) {
+        return lockByAccountRef(ref)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found: " + ref));
+    }
+
 }

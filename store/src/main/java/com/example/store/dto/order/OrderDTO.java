@@ -1,6 +1,7 @@
 package com.example.store.dto.order;
 
 import com.example.store.enums.OrderStatus;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -26,6 +27,7 @@ public class OrderDTO {
     private BigDecimal shipping;
     private BigDecimal tax;
     private BigDecimal total;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime placedAt;
     private List<OrderItemDTO> orderItems;
 

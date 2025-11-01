@@ -12,31 +12,27 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/customers/{customerId}/accounts")
+@RequestMapping("/api/accounts")
 @RequiredArgsConstructor
 public class AccountController {
 
     private final AccountService accountService;
 
     @PostMapping
-    public ResponseEntity<AccountDTO> createAccount(
-        @PathVariable Long customerId, @RequestBody @Valid CreateAccountDTO accountDto
-    ) {
-        AccountDTO account = accountService.createAccount(customerId, accountDto);
+    public ResponseEntity<AccountDTO> createAccount(@RequestBody @Valid CreateAccountDTO accountDto) {
+        AccountDTO account = accountService.createAccount(accountDto);
         return new ResponseEntity<>(account, HttpStatus.CREATED);
     }
 
-    @GetMapping("/{accountId}")
-    public ResponseEntity<AccountDTO> getAccountById(
-        @PathVariable Long customerId, @PathVariable Long accountId
-    ) {
-        AccountDTO account = accountService.getAccountByIdAndCustomer(customerId, accountId);
+    @GetMapping("/{accountRef}")
+    public ResponseEntity<AccountDTO> getAccountByRef(@PathVariable String accountRef) {
+        AccountDTO account = accountService.getByAccountRef(accountRef);
         return ResponseEntity.ok(account);
     }
 
     @GetMapping
-    public ResponseEntity<List<AccountDTO>> getAllAccounts(@PathVariable Long customerId) {
-        List<AccountDTO> accounts = accountService.getAllAccountsByCustomer(customerId);
+    public ResponseEntity<List<AccountDTO>> getAllAccounts() {
+        List<AccountDTO> accounts = accountService.getAllAccounts();
         return ResponseEntity.ok(accounts);
     }
 

@@ -1,21 +1,26 @@
 # STORE API README
 
+## Base url
+```
+http://localhost:8080
+```
+
 ## latest update (10:00 am thu 30)
 ### Docker: kafka and postgre
- - turn on 
-    ```
-    docker compose up -d 
-    ```
+- turn on
+   ```
+   docker compose up -d 
+   ```
 
- - turn off
-    ```
-    docker compose stop
-    ```
-    
- - remove
+- turn off
    ```
-   docker compose down
+   docker compose stop
    ```
+
+- remove
+  ```
+  docker compose down
+  ```
 
 - visit pgadmin http://localhost:5050
 - visit kafkaui http://localhost:6060
@@ -26,6 +31,7 @@
 - other handlers only listen to `command/` and create outbox records for `event/`
 - `OutboxPublisher` will be scheduled to kafka.send outbox records.
 - try create order you should see some warning logs.
+
 
 ### DeliveryCo → Store Webhook (status updates)
 
@@ -148,12 +154,10 @@ Configure shared secret (must match DeliveryCo):
 - `app.delivery.secret: change-me` in `store/src/main/resources/application.yml`
 - In DeliveryCo: `deliveryco.store-webhook.secret-value: change-me`
    
+
 ### Note
 
->Note: if you change/add new @Entity, please drop the store db, create a new on in pgadmin, then
->  - Option 1 (current): update the schema(s) in resources/db/migration/V1_init.sql. its because i set ddl-auto to validate, which means jpa wont create/alter the schema, it just validate.
->
->  - Option 2: set to ddl-auto to update, may have some error messages about constraint already created, but it runs fine
+>Note: if you change/add new @Entity, you might need to drop the store db and create a new one in pgadmin. please also update the schema(s) in resources/db/migration/V1_init.sql.
 
 ---
 
@@ -327,7 +331,7 @@ Polymorphism and inheritance are used to generalize behavior:
     http://localhost:8080/api/products
     ```
 
-#### Get warehouse by productCode
+#### Get product by productCode
 - **GET**
     ```
     http://localhost:8080/api/products/{productCode}
@@ -496,6 +500,7 @@ Polymorphism and inheritance are used to generalize behavior:
       "customerId": "2439f2f3-01d6-46bf-9933-f8e5b48778f4",
       "deliveryAddress": "Rockdale 2216",
       "shipping": 45,
+      "paymentAccountRef": "BAC-01K8X2KFVS6HWT8VNMZMFY67EK",
       "orderItems": [
         {
           "productCode": "PRD-01K8QE83388P0HSE45E4378SXT",
@@ -559,5 +564,8 @@ Polymorphism and inheritance are used to generalize behavior:
     Warehouse <|-- Warehouse1Stock
     Warehouse <|-- Warehouse2Stock
 
+
     OrderItems --> ProductPurchaseHistoryService
+
+
 

@@ -23,8 +23,9 @@ CREATE TABLE IF NOT EXISTS public.admin (
 );
 
 CREATE TABLE IF NOT EXISTS public.customer (
-    address varchar(255),
-    phone   varchar(30),
+    address        varchar(255),
+    phone          varchar(30),
+    bank_account_ref varchar(40),
     id      uuid NOT NULL
 );
 
@@ -52,17 +53,19 @@ CREATE TABLE IF NOT EXISTS public.warehouse_stock (
 ) PARTITION BY LIST (warehouse_id);
 
 CREATE TABLE IF NOT EXISTS public.orders (
-    id               uuid          NOT NULL,
-    delivery_address varchar(255)  NOT NULL,
-    order_number     varchar(30)   NOT NULL,
-    placed_at        timestamp(6)  NOT NULL,
-    shipping         numeric(15,2) NOT NULL,
-    status           varchar(20)   NOT NULL,
-    sub_total        numeric(15,2) NOT NULL,
-    tax              numeric(15,2) NOT NULL,
-    total            numeric(15,2) NOT NULL,
-    customer_id      uuid          NOT NULL,
-    idempotency_key  varchar(80)    NOT NULL
+    id                   uuid          NOT NULL,
+    delivery_address     varchar(255)  NOT NULL,
+    order_number         varchar(30)   NOT NULL,
+    placed_at            timestamp(6)  NOT NULL,
+    shipping             numeric(15,2) NOT NULL,
+    status               varchar(100)   NOT NULL,
+    sub_total            numeric(15,2) NOT NULL,
+    tax                  numeric(15,2) NOT NULL,
+    total                numeric(15,2) NOT NULL,
+    customer_id          uuid          NOT NULL,
+    idempotency_key      varchar(80)   NOT NULL,
+    payment_account_ref  varchar(100)  NOT NULL,
+    delivery_tracking_id uuid          NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS public.order_item (
@@ -81,7 +84,7 @@ CREATE TABLE IF NOT EXISTS public.payments (
     amount           numeric(15,2)  NOT NULL,
     idempotency_key  varchar(80)    NOT NULL,
     order_id         uuid           NOT NULL,
-    provider_txn_id  varchar(30)    NOT NULL,
+    provider_txn_id  varchar(30),
     refunded_total   numeric(15,2)  NOT NULL,
     status           varchar(20)    NOT NULL
 );
@@ -150,6 +153,12 @@ ALTER TABLE public.payments
 
 ALTER TABLE public.users
     ADD CONSTRAINT uk_users_email UNIQUE (email);
+
+ALTER TABLE public.orders
+    ADD CONSTRAINT uk_orders_order_number UNIQUE (order_number);
+
+ALTER TABLE public.orders
+    ADD CONSTRAINT uk_orders_idempotency_key UNIQUE (idempotency_key);
 
 -- ======================
 -- Indexes
