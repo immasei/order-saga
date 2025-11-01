@@ -190,6 +190,32 @@ Empty payloads are ignored; malformed JSON is logged and skipped via Spring’s 
 
 `status` transitions through `RECEIVED → PICKED_UP → IN_TRANSIT → DELIVERED` (or `LOST`). Each change is guaranteed via the outbox publisher; failures are retried and optionally dead-lettered to `delivery.status.dlq`.
 
+### Store Webhook (optional)
+
+DeliveryCo can also notify the Store via REST on every status change. This is in addition to Kafka (EmailService still consumes Kafka).
+
+- Config (application.yml)
+  - `deliveryco.store-webhook.enabled`: true|false (default true)
+  - `deliveryco.store-webhook.base-url`: Store base URL (default `http://localhost:8080`)
+  - `deliveryco.store-webhook.path`: Callback path (default `/api/delivery/status-callback`)
+  - `deliveryco.store-webhook.secret-header`: Header name for shared secret (default `X-DeliveryCo-Secret`)
+  - `deliveryco.store-webhook.secret-value`: Secret value (must match Store)
+
+- Payload example (POST `${base-url}${path}`)
+```json
+{
+  "eventId": "81fe8112-70fa-48d5-9470-697150cdd283",
+  "externalOrderId": "ORD-1234",
+  "status": "IN_TRANSIT",
+  "reason": "Package out for delivery",
+  "occurredAt": "2025-10-17T10:33:32.790Z"
+}
+```
+
+- Behavior
+  - Fire-and-forget (non-blocking WebClient); failures are logged and do not affect internal processing or Kafka publishing.
+  - Include the shared-secret header if configured.
+
 ### Status Lifecycle
 
 | Stage        | Description                                      |
@@ -246,6 +272,99 @@ Run both services locally
 3) Start EmailService
 - `cd ../email_service`
 - `gradle bootRun`
+
+## End-to-End Demo (Webhook + Kafka)
+
+This demo shows DeliveryCo updating Store via REST (webhook) while EmailService consumes Kafka for customer emails.
+
+Prerequisites
+- Docker Desktop running.
+- Compose stack up (Postgres, Kafka, ZooKeeper):
+  - `docker compose -f delivery-co/docker-compose.yml up -d`
+- Secrets aligned (shared secret for webhook):
+  - Store: `app.delivery.secret: change-me`
+  - DeliveryCo: `deliveryco.store-webhook.secret-value: change-me`
+
+Ports (recommended)
+- Store on `8080`
+- DeliveryCo on `8082` (to avoid port clash with Store)
+- EmailService on `8081`
+
+Start apps
+- Terminal A: `cd store && ./gradlew bootRun`
+- Terminal B: `cd delivery-co && ./gradlew bootRun --args='--server.port=8082'`
+- (Optional) Terminal C: `cd email_service && gradle bootRun`
+
+Seed Store with data (copy/paste commands; adjust values if needed)
+1) Create a customer (save the `id` from the response)
+```
+curl -sS -X POST http://localhost:8080/api/customers \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "email":"customer+demo@gmail.com",
+    "password":"123456",
+    "role":"CUSTOMER",
+    "firstName":"Jane",
+    "lastName":"Doe",
+    "phone":"123-456-7890",
+    "address":"123 Test St"
+  }'
+```
+2) Create a product (save the `productCode`)
+```
+curl -sS -X POST http://localhost:8080/api/products \
+  -H 'Content-Type: application/json' \
+  -d '{ "productName":"Widget Demo", "description":"Demo item", "price":12.50 }'
+```
+3) Place an order (save the `orderNumber` — this becomes `externalOrderId`)
+```
+curl -sS -X POST http://localhost:8080/api/orders \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "customerId":"<PASTE_CUSTOMER_ID>",
+    "deliveryAddress":"123 Test St",
+    "shipping":5.00,
+    "orderItems":[{"productCode":"<PASTE_PRODUCT_CODE>","quantity":2}]
+  }'
+```
+
+Kick off DeliveryCo for that order
+```
+curl -sS -X POST http://localhost:8082/api/deliveries \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "externalOrderId":"<PASTE_STORE_ORDER_NUMBER>",
+    "customerId":"C-DEMO",
+    "pickupLocations": { "WH-1":"1 Warehouse Way" },
+    "dropoffAddress":"22 Customer St",
+    "contactEmail":"demo@customer.local",
+    "lossRate":0.05,
+    "items": { "WH-1": {"SKU-1":1} }
+  }'
+```
+
+Verify Store status updates (DeliveryCo → Store webhook)
+- Poll the order (allow ~10–20s between polls):
+```
+curl -sS http://localhost:8080/api/orders/<PASTE_STORE_ORDER_NUMBER>
+```
+- Expected: status progresses from `PENDING` → `PAID` → `SHIPPED`.
+
+Optional: Customer email UI (Kafka path)
+- Open `http://localhost:8081`, enter `demo@customer.local`, click “Load”.
+- Expect exactly one email per status (deduplicated).
+
+Troubleshooting
+- 403 when POSTing `/api/deliveries`: You hit Store (8080). DeliveryCo is on 8082.
+- DeliveryCo DB connection refused: ensure Postgres is up on port 15432 (`docker compose -f delivery-co/docker-compose.yml ps`).
+- Store stays `PENDING`: either DeliveryCo didn’t progress yet (wait or reduce delay), or webhook secret mismatch. Test receiver directly:
+```
+curl -X POST http://localhost:8080/api/delivery/status-callback \
+  -H 'Content-Type: application/json' \
+  -H 'X-DeliveryCo-Secret: change-me' \
+  -d '{"eventId":"00000000-0000-0000-0000-000000000000","externalOrderId":"<ORDER>","status":"IN_TRANSIT","reason":"manual","occurredAt":"2025-11-01T06:00:00Z"}'
+```
+- Secrets must match: `deliveryco.store-webhook.secret-value` (DeliveryCo) vs `app.delivery.secret` (Store).
 
 4) Open the inbox UI
 - Visit `http://localhost:8081`
