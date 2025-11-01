@@ -47,7 +47,7 @@ public class SagaOrchestrator {
     //  Outbox ChargePayment
     @KafkaHandler
     public void on(@Payload InventoryReserved evt) {
-        log.info("@ InventoryReserved for order={}", evt.orderNumber());
+        log.info("@ InventoryReserved: [SAGA] for order={}", evt.orderNumber());
         orchestrator.onInventoryReserved(evt);
     }
 
@@ -63,7 +63,7 @@ public class SagaOrchestrator {
     //  Outbox CreateShipment
     @KafkaHandler
     public void on(@Payload PaymentSucceeded evt) {
-        log.info("@ PaymentSucceeded for order={}", evt.orderNumber());
+        log.info("@ PaymentSucceeded: [SAGA] for order={}", evt.orderNumber());
         orchestrator.onPaymentSucceeded(evt);
     }
 
@@ -79,7 +79,7 @@ public class SagaOrchestrator {
     //  Outbox NotifyCustomer
     @KafkaHandler
     public void on(@Payload ShipmentCreated evt) {
-        log.info("@ ShipmentCreated for order={}", evt.orderNumber());
+        log.info("@ ShipmentCreated: [SAGA] for order={}", evt.orderNumber());
         orchestrator.onShipmentCreated(evt);
     }
 
