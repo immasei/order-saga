@@ -103,4 +103,9 @@ public class UserService implements UserDetailsService {
         return userDto;
     }
 
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadCredentialsException("User with email "+ email +" not found"));
+
+    }
 }

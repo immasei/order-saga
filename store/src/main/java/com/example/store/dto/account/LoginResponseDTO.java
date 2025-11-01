@@ -12,20 +12,22 @@ import lombok.*;
 
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class LoginResponseDTO extends UserDTO {
 
     private String accessToken;
-
-    @JsonIgnore
     private String refreshToken;
+    private String email;
+    private String role;
 
-    public LoginResponseDTO(UserDTO userDTO, String accessToken, String refreshToken) {
-        super(userDTO.getId(), userDTO.getEmail(), userDTO.getRole(), null, null, null, null);
+    public LoginResponseDTO(UserDTO userDto, String accessToken, String refreshToken) {
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
+        this.email = userDto.getEmail();
+        this.role = userDto.getRole();
     }
-
 }

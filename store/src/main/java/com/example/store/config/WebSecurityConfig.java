@@ -13,7 +13,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import static com.example.store.enums.UserRole.*;
-
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -21,65 +20,35 @@ import static com.example.store.enums.UserRole.*;
 public class WebSecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
-    private final CustomAuthenticationSuccessHandler authenticationSuccessHandler;
-    private final CustomAuthenticationFailureHandler authenticationFailureHandler;
 
     private static final String[] PUBLIC_ROUTES = {
             "/error",
             "/api/auth/**",
-            "/api/customers/**",
-            "/api/products/**",
-            "/api/warehouses/**",
-            "/api/stocks/**",
-            "/api/orders/**",
-
-            "/api/auditlogs/**",
-            "/api/delivery/**",
-            "/api/inbox/**",
-            "/api/outbox/**",
-            "/api/product-purchase-history/**",
-            "/",
             "/css/**",
             "/js/**",
             "/images/**",
+            "/webjars/**",
             "/login",
-            "/dashboard",
-            "/css/**",
-            "/js/**",
-            "/",                    // Home page
-            "/login",               // Login page
-            "/images/**",
-            "/webjars/**"
+            "/register",
+            "/forgot-password",
+            "/dashboard"
     };
-
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
-        // Configure both JWT and form-based authentication
         httpSecurity
-            .authorizeHttpRequests(auth -> auth
-                    .requestMatchers(PUBLIC_ROUTES).permitAll()
-                    .requestMatchers("/api/admins/**")
-                        .hasRole(ADMIN.name())
-                    .anyRequest().authenticated())
-            .formLogin(form -> form
-                    .loginPage("/login")
-                    .loginProcessingUrl("/login")
-                    .successHandler(authenticationSuccessHandler)
-                    .failureHandler(authenticationFailureHandler)
-                    .permitAll())
-            .logout(logout -> logout
-                    .logoutUrl("/logout")
-                    .logoutSuccessUrl("/login?logout=true")
-                    .invalidateHttpSession(true)
-                    .deleteCookies("refreshToken")
-                    .permitAll())
-            .csrf(csrfConfig -> csrfConfig.disable())
-            .sessionManagement(sessionConfig -> sessionConfig
-                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                    .maximumSessions(1)
-                    .maxSessionsPreventsLogin(false))
-            .formLogin(form -> form.disable())
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(PUBLIC_ROUTES).permitAll()
+                        .requestMatchers("/api/admins/**").hasRole(ADMIN.name())
+                        .anyRequest().authenticated() // This includes /dashboard
+                )
+                // Disable form login since we're using JWT
+                .formLogin(form -> form.disable())
+                .logout(logout -> logout.disable()) // We'll handle logout via API
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return httpSecurity.build();
     }
@@ -88,5 +57,4 @@ public class WebSecurityConfig {
     AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
-
 }
