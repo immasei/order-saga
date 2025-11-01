@@ -56,16 +56,16 @@ public class PaymentHandler {
     @KafkaHandler
     public void on(@Payload @Valid RefundPayment cmd) {
         try {
-            throw new BankException(404, "Not Found");
-//            if (paymentService.isZeroAmount(cmd)) {
-//                paymentService.markZeroAmountRefundSucceed(cmd);
-//                log.info("@ RefundPayment: [BANK][SKIPPED] amount=0 for order={}", cmd.orderNumber());
-//            } else {
-//                String txId = paymentService.getRefundableTx(cmd);
-//                PaymentResponseDTO payment = paymentService.refund(cmd, txId);
-//                paymentService.markRefundSucceed(cmd, payment);
-//                log.info("@ RefundPayment: [BANK][SUCCESS] for order={}, createdAt={}", cmd.orderNumber(), cmd.createdAt());
-//            }
+//            throw new BankException(404, "Not Found"); // demo refund failed
+            if (paymentService.isZeroAmount(cmd)) {
+                paymentService.markZeroAmountRefundSucceed(cmd);
+                log.info("@ RefundPayment: [BANK][SKIPPED] amount=0 for order={}", cmd.orderNumber());
+            } else {
+                String txId = paymentService.getRefundableTx(cmd);
+                PaymentResponseDTO payment = paymentService.refund(cmd, txId);
+                paymentService.markRefundSucceed(cmd, payment);
+                log.info("@ RefundPayment: [BANK][SUCCESS] for order={}, createdAt={}", cmd.orderNumber(), cmd.createdAt());
+            }
 
         } catch (BankException ex) {
             // user are eligible for refund after check
