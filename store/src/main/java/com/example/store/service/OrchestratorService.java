@@ -3,14 +3,10 @@ package com.example.store.service;
 import com.example.store.config.KafkaTopicProperties;
 import com.example.store.dto.inventory.InventoryAllocationDTO;
 import com.example.store.enums.AggregateType;
+import com.example.store.enums.EventType;
 import com.example.store.enums.OrderStatus;
-import com.example.store.kafka.command.ChargePayment;
-import com.example.store.kafka.command.CreateShipment;
-import com.example.store.kafka.command.ReserveInventory;
-import com.example.store.kafka.event.InventoryReserved;
-import com.example.store.kafka.event.OrderPlaced;
-import com.example.store.kafka.event.PaymentSucceeded;
-import com.example.store.kafka.event.ShipmentCreated;
+import com.example.store.kafka.command.*;
+import com.example.store.kafka.event.*;
 import com.example.store.model.Order;
 import com.example.store.model.Outbox;
 import com.example.store.repository.OrderRepository;
@@ -18,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Service
@@ -105,6 +102,49 @@ public class OrchestratorService {
         orderRepository.save(order);
 
         reservationService.commitReservation(evt.orderNumber());
+
+        // 1. notify customer
+        NotifyCustomer cmd = NotifyCustomer.builder()
+                .orderNumber(evt.orderNumber())
+                .toAddress(order.getCustomer().getEmail())
+                .subject(String.format("[SHIPPED] ORDER %s", evt.orderNumber()))
+                .body(EventType.ORDER_SHIPPED.toString())
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        // 2. outbox NotifyCustomer to db
+        Outbox outbox = new Outbox();
+        outbox.setAggregateId(cmd.orderNumber());
+        outbox.setAggregateType(AggregateType.NOTIFICATION);
+        outbox.setEventType(cmd.getClass().getName());
+        outbox.setTopic(kafkaProps.notificationsCommands());
+        outboxService.save(outbox, cmd);
     }
+
+    @Transactional
+    public void onInventoryOutOfStock(InventoryOutOfStock evt) {
+        Order order = orderRepository
+                .findByOrderNumberForUpdateOrThrow(evt.orderNumber());
+        order.setStatus(OrderStatus.CANCELLED);
+        orderRepository.save(order);
+
+        // 1. notify customer
+        NotifyCustomer cmd = NotifyCustomer.builder()
+            .orderNumber(evt.orderNumber())
+            .toAddress(order.getCustomer().getEmail())
+            .subject(String.format("[CANCELLED] ORDER %s", evt.orderNumber()))
+            .body(EventType.INVENTORY_OUT_OF_STOCK.toString())
+            .createdAt(LocalDateTime.now())
+            .build();
+
+        // 2. outbox NotifyCustomer to db
+        Outbox outbox = new Outbox();
+        outbox.setAggregateId(cmd.orderNumber());
+        outbox.setAggregateType(AggregateType.NOTIFICATION);
+        outbox.setEventType(cmd.getClass().getName());
+        outbox.setTopic(kafkaProps.notificationsCommands());
+        outboxService.save(outbox, cmd);
+    }
+
 }
 

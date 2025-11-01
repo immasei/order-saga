@@ -47,7 +47,7 @@ public class SagaOrchestrator {
     //  Outbox ChargePayment
     @KafkaHandler
     public void on(@Payload InventoryReserved evt) {
-        log.info("@ InventoryReserved: [SAGA] for order={}", evt.orderNumber());
+        log.info("@ InventoryReserved: [SAGA][FORWARD] for order={}", evt.orderNumber());
         orchestrator.onInventoryReserved(evt);
     }
 
@@ -55,7 +55,8 @@ public class SagaOrchestrator {
     //  Outbox CancelOrder
     @KafkaHandler
     public void on(@Payload InventoryOutOfStock evt) {
-        log.warn(evt.toString()); // tmp fix later
+        log.info("@ InventoryOutOfStock: [SAGA][COMPENSATION] for order={}", evt.orderNumber());
+        orchestrator.onInventoryOutOfStock(evt);
     }
 
     // === Payment outcomes ===
@@ -63,7 +64,7 @@ public class SagaOrchestrator {
     //  Outbox CreateShipment
     @KafkaHandler
     public void on(@Payload PaymentSucceeded evt) {
-        log.info("@ PaymentSucceeded: [SAGA] for order={}", evt.orderNumber());
+        log.info("@ PaymentSucceeded: [SAGA][FORWARD] for order={}", evt.orderNumber());
         orchestrator.onPaymentSucceeded(evt);
     }
 
@@ -79,7 +80,7 @@ public class SagaOrchestrator {
     //  Outbox NotifyCustomer
     @KafkaHandler
     public void on(@Payload ShipmentCreated evt) {
-        log.info("@ ShipmentCreated: [SAGA] for order={}", evt.orderNumber());
+        log.info("@ ShipmentCreated: [SAGA][FORWARD] for order={}", evt.orderNumber());
         orchestrator.onShipmentCreated(evt);
     }
 
@@ -95,14 +96,15 @@ public class SagaOrchestrator {
     //  Outbox NotifyCustomer
     @KafkaHandler
     public void on(@Payload EmailFailed evt) {
-        log.warn(evt.toString()); // tmp fix later
+        // No-op or metrics. We've already saved FAILED in markEmailFailed().
+        log.warn("@ EmailFailed: [SAGA] received for order={} to={} subject={} body={}", evt.orderNumber(), evt.toAddress(), evt.subject(), evt.body());
     }
 
     //  Consume EmailFailed event
     //  Outbox nothing
     @KafkaHandler
     public void on(@Payload EmailSent evt) {
-        log.warn(evt.toString()); // tmp fix later
+        log.debug("@ EmailSent: [SAGA} received for order={} to={} subject={} body={}", evt.orderNumber(), evt.toAddress(), evt.subject(), evt.body());
     }
 
 }

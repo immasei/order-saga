@@ -29,16 +29,14 @@ public class PaymentHandler {
     // === Outbox PaymentSucceeded or PaymentFailed
     @KafkaHandler
     public void on(@Payload @Valid ChargePayment cmd) {
-        log.info("@ ChargePayment: order={} createdAt={}", cmd.orderNumber(), cmd.createdAt());
-
         try {
             PaymentResponseDTO payment = paymentService.transfer(cmd);
-            paymentService.onPaymentSucceed(cmd, payment);
+            paymentService.markPaymentSucceed(cmd, payment);
             log.info("@ ChargePayment: [BANK][SUCCESS] for order={}, createdAt={}", cmd.orderNumber(), cmd.createdAt());
 
         } catch (BankException ex) {
             log.warn("@ ChargePayment: [BANK][FAILED] for order={}, status={}, message={}", cmd.orderNumber(), ex.getStatusCode(), ex.getMessage());
-            paymentService.onPaymentFailed(cmd);
+            paymentService.markPaymentFailed(cmd);
 
         } catch (Exception ex) {
             log.error("@ ChargePayment: [BANK][UNEXPECTED] Failed charge payment for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);

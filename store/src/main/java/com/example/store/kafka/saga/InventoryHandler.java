@@ -38,7 +38,7 @@ public class InventoryHandler {
         } catch (InsufficientStockException ex) {
             log.warn("@ ReserveInventory: [STORE][FAILED] Inventory insufficient for order={} missing={}", cmd.orderNumber(), ex.getMissing());
             // mark out of stock
-            reservationService.onInventoryOutOfStock(cmd, ex.getMissing());
+            reservationService.markInventoryOutOfStock(cmd, ex.getMissing());
 
         } catch (Exception ex) {
             log.error("@ ReserveInventory: [STORE][UNEXPECTED] Failed to reserve inventory for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);
@@ -51,12 +51,12 @@ public class InventoryHandler {
     @KafkaHandler
     public void on(@Payload @Valid ReleaseInventory cmd) {
         try {
-            reservationService.releaseReservation(cmd);
+            reservationService.releaseReservation(cmd); // mark released
             log.info("@ ReleaseInventory: [STORE][SUCCESS] fir order={} reason={}", cmd.orderNumber(), cmd.reason());
 
         } catch (ResourceNotFoundException ex) {
             log.warn("@ ReleaseInventory: [STORE][FAILED] Reservation not found when releasing inventory for order={}, treating as idempotent", cmd.orderNumber());
-            reservationService.onOrphanInventoryRelease(cmd);
+            reservationService.markOrphanInventoryRelease(cmd);
 
         } catch (Exception ex) {
             log.error("@ ReleaseInventory: [STORE][UNEXPECTED] Failed to release inventory for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);

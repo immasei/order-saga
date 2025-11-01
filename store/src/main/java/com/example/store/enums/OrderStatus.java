@@ -6,6 +6,8 @@ public enum OrderStatus {
     RESERVED_AND_AWAIT_PAYMENT,
     PAID_AND_AWAIT_SHIPMENT,
     SHIPPED,
+    AWAIT_REFUND_THEN_RELEASE,
+    AWAIT_RELEASE_THEN_CANCEL,
     CANCELLED,
     ERROR_DEAD_LETTER     // technical issue, human/ops
 }

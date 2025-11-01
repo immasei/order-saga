@@ -5,7 +5,7 @@ import com.example.store.dto.delivery.DeliveryDTO;
 import com.example.store.dto.delivery.DeliveryResponseDTO;
 import com.example.store.dto.payment.ErrorResponse;
 import com.example.store.enums.AggregateType;
-import com.example.store.exception.DeliveryException;
+import com.example.store.exception.DeliveryCoException;
 import com.example.store.kafka.command.CreateShipment;
 import com.example.store.kafka.event.ShipmentCreated;
 import com.example.store.kafka.event.ShipmentFailed;
@@ -48,7 +48,7 @@ public class ShippingService {
             // handle non-2xx responses
             .onStatus(HttpStatusCode::isError, resp ->
                 resp.bodyToMono(ErrorResponse.class)
-                    .map(err -> new DeliveryException(
+                    .map(err -> new DeliveryCoException(
                         err.getStatus(),
                         err.getMessage()
                     ))
@@ -60,7 +60,7 @@ public class ShippingService {
     }
 
     @Transactional
-    public void onShipmentCreated(CreateShipment cmd, DeliveryResponseDTO delivery) {
+    public void markShipmentCreated(CreateShipment cmd, DeliveryResponseDTO delivery) {
         // 1. build command
         ShipmentCreated evt = ShipmentCreated.of(cmd, delivery);
         // 2. outbox ChargePayment to db
@@ -68,7 +68,7 @@ public class ShippingService {
     }
 
     @Transactional
-    public void onShipmentFailed(CreateShipment cmd) {
+    public void markShipmentFailed(CreateShipment cmd) {
         // 1. build command
         ShipmentFailed evt = ShipmentFailed.of(cmd);
         // 2. outbox ChargePayment to db

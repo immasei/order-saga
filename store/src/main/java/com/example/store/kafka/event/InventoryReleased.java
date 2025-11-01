@@ -1,43 +1,26 @@
 package com.example.store.kafka.event;
 
-import com.example.store.dto.inventory.InventoryAllocationDTO;
+import com.example.store.enums.EventType;
+import com.example.store.kafka.command.ReleaseInventory;
+import lombok.Builder;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
+@Builder
 public record InventoryReleased(
         String orderNumber,
         String idempotencyKey,
-        String reason,
-        List<WarehouseAllocation> allocations,
+        EventType reason,
+        boolean isCancellable,
         LocalDateTime releasedAt
 ) {
-    public record WarehouseAllocation(
-            String warehouseCode,
-            List<Item> items
-    ) {}
-
-    public record Item(
-            String productCode,
-            int quantity
-    ) {}
-
-    public static InventoryReleased of(InventoryAllocationDTO allocation, String reason) {
-        List<WarehouseAllocation> warehouses = allocation.allocations().stream()
-                .map(wh -> new WarehouseAllocation(
-                        wh.warehouseCode(),
-                        wh.items().stream()
-                                .map(item -> new Item(item.productCode(), item.quantity()))
-                                .toList()
-                ))
-                .toList();
-
-        return new InventoryReleased(
-                allocation.orderNumber(),
-                allocation.idempotencyKey(),
-                reason,
-                warehouses,
-                LocalDateTime.now()
-        );
+    public static InventoryReleased of(ReleaseInventory cmd, boolean isCancellable, EventType reason) {
+        return InventoryReleased.builder()
+                .orderNumber(cmd.orderNumber())
+                .idempotencyKey(cmd.idempotencyKey())
+                .reason(reason)
+                .isCancellable(isCancellable)
+                .releasedAt(LocalDateTime.now())
+                .build();
     }
 }

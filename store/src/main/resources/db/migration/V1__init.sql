@@ -101,6 +101,17 @@ CREATE TABLE IF NOT EXISTS public.outbox (
     created_at       timestamp(6)  NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS public.email_record (
+    id UUID NOT NULL,
+    order_id uuid NOT NULL,
+    to_address VARCHAR(255) NOT NULL,
+    subject VARCHAR(255),
+    body VARCHAR(255),
+    status VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP NOT NULL
+);
+
+
 -- ======================
 -- Primary Keys & Unique
 -- ======================

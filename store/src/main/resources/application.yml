@@ -7,7 +7,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     properties:
 #      jakarta.persistence.schema-generation.database.action: none
       hibernate:

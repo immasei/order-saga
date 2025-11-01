@@ -96,7 +96,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public void onPaymentSucceed(ChargePayment cmd, PaymentResponseDTO payment) {
+    public void markPaymentSucceed(ChargePayment cmd, PaymentResponseDTO payment) {
         Order order = orderRepository.findByOrderNumberOrThrow(cmd.orderNumber());
         Payment p = new Payment();
         p.setOrder(order);
@@ -113,7 +113,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public void onPaymentFailed(ChargePayment cmd) {
+    public void markPaymentFailed(ChargePayment cmd) {
         Order order = orderRepository.findByOrderNumberOrThrow(cmd.orderNumber());
         Payment p = new Payment();
         p.setOrder(order);
@@ -137,10 +137,5 @@ public class PaymentService {
         outbox.setTopic(kafkaProps.paymentsEvents());
         outboxService.save(outbox, payload);
     }
-
-
-
-
-
 
 }

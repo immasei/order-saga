@@ -3,6 +3,7 @@ package com.example.store.service;
 import com.example.store.config.KafkaTopicProperties;
 import com.example.store.dto.inventory.*;
 import com.example.store.enums.AggregateType;
+import com.example.store.enums.EventType;
 import com.example.store.enums.ReservationStatus;
 import com.example.store.exception.InsufficientStockException;
 import com.example.store.exception.ResourceNotFoundException;
@@ -139,7 +140,7 @@ public class ReservationService {
     }
 
     @Transactional
-    public void onInventoryOutOfStock(
+    public void markInventoryOutOfStock(
         ReserveInventory cmd, List<InsufficientStockException. MissingItem> missingItems
     ) {
         InventoryOutOfStock evt = InventoryOutOfStock.of(cmd.orderNumber(), missingItems);
@@ -147,15 +148,8 @@ public class ReservationService {
     }
 
     @Transactional
-    public void onOrphanInventoryRelease(ReleaseInventory cmd) {
-        InventoryAllocationDTO empty = new InventoryAllocationDTO(
-            cmd.orderNumber(),
-            cmd.idempotencyKey(),
-            ReservationStatus.RELEASED,
-            List.of()
-        );
-        InventoryReleased evt = InventoryReleased.of(empty, cmd.reason());
-        emitEvent(cmd.orderNumber(), evt.getClass(), evt);
+    public void markOrphanInventoryRelease(ReleaseInventory cmd) {
+        InventoryReleased evt = InventoryReleased.of(cmd, true, EventType.NOTHING_TO_RELEASE);
         emitEvent(cmd.orderNumber(), evt.getClass(), evt);
     }
 
@@ -195,7 +189,7 @@ public class ReservationService {
 
         // mark released
         InventoryAllocationDTO allocation = toAllocationDto(reservation);
-        InventoryReleased evt = InventoryReleased.of(allocation, cmd.reason());
+        InventoryReleased evt = InventoryReleased.of(cmd, true, EventType.ORDER_NOT_SHIPPED);
         emitEvent(cmd.orderNumber(), evt.getClass(), evt);
 
         return toAllocationDto(reservation);
