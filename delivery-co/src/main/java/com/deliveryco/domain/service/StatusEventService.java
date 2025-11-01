@@ -6,6 +6,7 @@ import com.deliveryco.entity.DeliveryOrderEntity;
 import com.deliveryco.entity.DeliveryOutboxEntity;
 import com.deliveryco.entity.DeliveryStatusEventEntity;
 import com.deliveryco.repository.DeliveryOutboxRepository;
+import com.deliveryco.integration.StoreWebhookClient;
 import com.deliveryco.repository.DeliveryStatusEventRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,6 +27,7 @@ public class StatusEventService {
     private final DeliveryStatusEventRepository statusEventRepository;
     private final DeliveryOutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
+    private final StoreWebhookClient storeWebhookClient;
 
     @Transactional
     public DeliveryStatusEventEntity recordStatus(
@@ -83,6 +85,8 @@ public class StatusEventService {
                 .publishState(OutboxPublishState.PENDING)
                 .build();
         outboxRepository.save(outbox);
+        // Fire-and-forget webhook to Store (optional, non-blocking)
+        storeWebhookClient.sendStatusAsync(savedEvent, order);
         return savedEvent;
     }
 

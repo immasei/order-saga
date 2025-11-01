@@ -26,6 +26,127 @@
 - other handlers only listen to `command/` and create outbox records for `event/`
 - `OutboxPublisher` will be scheduled to kafka.send outbox records.
 - try create order you should see some warning logs.
+
+### DeliveryCo → Store Webhook (status updates)
+
+Store exposes a REST endpoint to accept delivery status callbacks from DeliveryCo.
+
+- Endpoint
+  - `POST /api/delivery/status-callback`
+  - Header: `X-DeliveryCo-Secret: <shared-secret>` (must match `app.delivery.secret`)
+- Body (JSON)
+```
+{
+  "eventId": "uuid",
+  "externalOrderId": "ORD-1234",
+  "status": "RECEIVED|PICKED_UP|IN_TRANSIT|DELIVERED|LOST|CANCELLED",
+  "reason": "...",
+  "occurredAt": "2025-10-17T10:33:32.790Z"
+}
+```
+- Mapping to Store status
+  - RECEIVED → RESERVED
+  - PICKED_UP, IN_TRANSIT → SHIPPED (adjust if you add an IN_DELIVERY state)
+  - DELIVERED → SHIPPED (or COMPLETED if you add it)
+  - LOST, CANCELLED → CANCELLED
+
+Configure the shared secret
+- In `store/src/main/resources/application.yml`: `app.delivery.secret: change-me`
+- In DeliveryCo: `deliveryco.store-webhook.secret-value: change-me`
+
+### End-to-End Demo (copy/paste)
+
+Prereqs
+- Docker Desktop running. Compose up (DB/Kafka):
+  - `docker compose -f delivery-co/docker-compose.yml up -d`
+- Secrets aligned in Store + DeliveryCo as above.
+- Ports: Store on 8080; DeliveryCo on 8082; EmailService on 8081 (optional).
+
+Run apps
+- Terminal A: `cd store && ./gradlew bootRun`
+- Terminal B: `cd delivery-co && ./gradlew bootRun --args='--server.port=8082'`
+
+Seed Store
+1) Create a customer (copy `id` from the response):
+```
+curl -sS -X POST http://localhost:8080/api/customers -H 'Content-Type: application/json' -d '{
+  "email":"customer+demo@gmail.com","password":"123456","role":"CUSTOMER",
+  "firstName":"Jane","lastName":"Doe","phone":"123-456-7890","address":"123 Test St"
+}'
+```
+2) Create a product (copy `productCode`):
+```
+curl -sS -X POST http://localhost:8080/api/products -H 'Content-Type: application/json' -d '{
+  "productName":"Widget Demo","description":"Demo item","price":12.50
+}'
+```
+3) Place an order (copy `orderNumber` — becomes externalOrderId):
+```
+curl -sS -X POST http://localhost:8080/api/orders -H 'Content-Type: application/json' -d '{
+  "customerId":"<PASTE_CUSTOMER_ID>",
+  "deliveryAddress":"123 Test St",
+  "shipping":5.00,
+  "orderItems":[{"productCode":"<PASTE_PRODUCT_CODE>","quantity":2}]
+}'
+```
+
+Kick off DeliveryCo for that order (DeliveryCo on 8082)
+```
+curl -sS -X POST http://localhost:8082/api/deliveries -H 'Content-Type: application/json' -d '{
+  "externalOrderId":"<PASTE_STORE_ORDER_NUMBER>",
+  "customerId":"C-DEMO",
+  "pickupLocations": { "WH-1":"1 Warehouse Way" },
+  "dropoffAddress":"22 Customer St",
+  "contactEmail":"demo@customer.local",
+  "lossRate":0.05,
+  "items": { "WH-1": {"SKU-1":1} }
+}'
+```
+
+Verify status change in Store
+```
+curl -sS http://localhost:8080/api/orders/<PASTE_STORE_ORDER_NUMBER>
+```
+Expected progression over ~10–20s: `PENDING` → `PAID` → `SHIPPED`.
+
+Optional
+- EmailService: `cd email_service && gradle bootRun` then open `http://localhost:8081` and enter `demo@customer.local` to see one email per status.
+
+Troubleshooting tips
+- 403 when POSTing `/api/deliveries`: you’re hitting Store (8080). DeliveryCo is on 8082.
+- Webhook rejected (401): secrets don’t match; set `app.delivery.secret` in Store and `deliveryco.store-webhook.secret-value` in DeliveryCo to the same value.
+- No status change: test the webhook directly:
+```
+curl -X POST http://localhost:8080/api/delivery/status-callback \
+  -H 'Content-Type: application/json' -H 'X-DeliveryCo-Secret: change-me' \
+  -d '{"eventId":"00000000-0000-0000-0000-000000000000","externalOrderId":"<ORDER>","status":"IN_TRANSIT","reason":"manual","occurredAt":"2025-11-01T06:00:00Z"}'
+```
+### DeliveryCo → Store Webhook (status updates)
+
+Store exposes a REST endpoint to accept delivery status callbacks from DeliveryCo.
+
+- Endpoint
+  - `POST /api/delivery/status-callback`
+  - Header: `X-DeliveryCo-Secret: <shared-secret>` (must match `app.delivery.secret`)
+- Body (JSON)
+```
+{
+  "eventId": "uuid",
+  "externalOrderId": "ORD-1234",
+  "status": "RECEIVED|PICKED_UP|IN_TRANSIT|DELIVERED|LOST|CANCELLED",
+  "reason": "...",
+  "occurredAt": "2025-10-17T10:33:32.790Z"
+}
+```
+- Mapping to Store status
+  - RECEIVED → RESERVED
+  - PICKED_UP, IN_TRANSIT → SHIPPED (or adjust as needed)
+  - DELIVERED → SHIPPED (or COMPLETED if you add it)
+  - LOST, CANCELLED → CANCELLED
+
+Configure shared secret (must match DeliveryCo):
+- `app.delivery.secret: change-me` in `store/src/main/resources/application.yml`
+- In DeliveryCo: `deliveryco.store-webhook.secret-value: change-me`
    
 ### Note
 
@@ -439,6 +560,4 @@ Polymorphism and inheritance are used to generalize behavior:
     Warehouse <|-- Warehouse2Stock
 
     OrderItems --> ProductPurchaseHistoryService
-
-
 

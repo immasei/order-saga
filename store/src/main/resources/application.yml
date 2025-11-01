@@ -57,3 +57,12 @@ app:
     bank: http://localhost:8081
     delivery-co: http://localhost:8082
     email: http://localhost:8083
+
+  simulation:
+    payments-success-rate: 0.8
+    shipping-success-rate: 0.85
+    notify-success-rate: 0.95
+
+  delivery:
+    # Shared secret for DeliveryCo webhook auth (must match DeliveryCo config)
+    secret: change-me
