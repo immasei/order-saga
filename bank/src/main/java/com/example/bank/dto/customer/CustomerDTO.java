@@ -17,6 +17,7 @@ import java.util.Collection;
 public class CustomerDTO {
 
     private Long id;
+    private String customerRef;
     private String firstName;
     private String lastName;
     private Collection<AccountDTO> accounts;

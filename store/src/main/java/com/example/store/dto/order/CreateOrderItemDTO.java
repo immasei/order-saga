@@ -16,7 +16,7 @@ public class CreateOrderItemDTO {
     private String productCode;
 
     @NotNull(message = "Quantity is required.")
-    @Min(value = 0, message = "Quantity cannot be negative")
+    @Min(value = 1, message = "Quantity cannot be negative")
     private int quantity;
 
 }

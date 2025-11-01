@@ -1,11 +1,13 @@
 package com.example.store.controller;
 
 import com.example.store.dto.inventory.CreateWarehouseDTO;
+import com.example.store.dto.inventory.InventoryAllocationDTO;
+import com.example.store.dto.inventory.ReleaseReservationRequest;
 import com.example.store.dto.inventory.StockDTO;
 import com.example.store.dto.inventory.WarehouseDTO;
 import com.example.store.service.WarehouseService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,10 +16,10 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/warehouses")
+@RequiredArgsConstructor
 public class WarehouseController {
 
-    @Autowired
-    private WarehouseService warehouseService;
+    private final WarehouseService warehouseService;
 
     // Create a new warehouse
     @PostMapping
@@ -51,34 +53,4 @@ public class WarehouseController {
         return ResponseEntity.ok(stocks);
     }
 
-    // Get warehouse by ID
-//    @GetMapping("/{id}")
-//    public ResponseEntity<Warehouse> getWarehouseById(@PathVariable UUID id) {
-//        Optional<Warehouse> warehouse = warehouseRepository.findById(id);
-//        return warehouse.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
-//    }
-//
-//    // Update warehouse details
-//    @PutMapping("/{id}")
-//    public ResponseEntity<Warehouse> updateWarehouse(@PathVariable UUID id, @RequestBody Warehouse warehouseDetails) {
-//        Optional<Warehouse> existingWarehouse = warehouseRepository.findById(id);
-//        if (existingWarehouse.isPresent()) {
-//            Warehouse warehouse = existingWarehouse.get();
-//            warehouse.setName(warehouseDetails.getName());
-//            warehouse.setLocation(warehouseDetails.getLocation());
-//            warehouseRepository.save(warehouse);
-//            return ResponseEntity.ok(warehouse);
-//        }
-//        return ResponseEntity.notFound().build();
-//    }
-//
-//    // Delete warehouse by ID
-//    @DeleteMapping("/{id}")
-//    public ResponseEntity<Void> deleteWarehouse(@PathVariable UUID id) {
-//        if (warehouseRepository.existsById(id)) {
-//            warehouseRepository.deleteById(id);
-//            return ResponseEntity.noContent().build();
-//        }
-//        return ResponseEntity.notFound().build();
-//    }
 }

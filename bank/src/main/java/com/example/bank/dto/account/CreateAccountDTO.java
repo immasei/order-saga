@@ -10,18 +10,15 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-/* Example JSON:
-{
-    "accountName": "Bruno Mars",
-    "accountType": "PERSONAL"
-}
-*/
-
 @Getter
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class CreateAccountDTO {
+
+    @NotNull(message = "Customer ref is required.")
+    @Size(max = 100, message = "Customer ref is too long")
+    private String customerRef;
 
     @NotBlank(message = "Account name cannot be blank")
     @Size(max = 200, message = "Account name is too long")

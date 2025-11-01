@@ -5,6 +5,7 @@ import com.example.store.enums.AggregateType;
 import com.example.store.kafka.command.*;
 import com.example.store.kafka.event.*;
 import com.example.store.model.Outbox;
+import com.example.store.service.OrchestratorService;
 import com.example.store.service.OutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,28 +30,16 @@ import org.springframework.messaging.handler.annotation.Payload;
 @RequiredArgsConstructor
 public class SagaOrchestrator {
     // === the only class that send Command
-
-    private final OutboxService outboxService;
-    private final KafkaTopicProperties kafkaProps;
+    private final OrchestratorService orchestrator;
 
     // === Kickoff ===
     //  Consume OrderCreated event
     //  Outbox ReserveInventory
     @KafkaHandler
     public void on(@Payload OrderPlaced evt) {
-        log.warn(evt.toString()); // tmp fix later
+        log.info("@ OrderPlaced for order={}", evt.orderNumber());
+        orchestrator.onOrderPlaced(evt);
 
-        // 1. build command
-        ReserveInventory cmd = ReserveInventory.of(evt);
-
-        // 2. outbox ReserveInventory to db
-        //    this event will later be published by kafka/OutboxPublisher
-        Outbox outbox = new Outbox();
-        outbox.setAggregateId(cmd.orderNumber());
-        outbox.setAggregateType(AggregateType.INVENTORY);
-        outbox.setEventType(cmd.getClass().getName());
-        outbox.setTopic(kafkaProps.inventoryCommands());
-        outboxService.save(outbox, cmd);
     }
 
     // === Inventory outcomes ===
@@ -58,7 +47,8 @@ public class SagaOrchestrator {
     //  Outbox ChargePayment
     @KafkaHandler
     public void on(@Payload InventoryReserved evt) {
-        log.warn(evt.toString()); // tmp fix later
+        log.info("@ InventoryReserved: [SAGA] for order={}", evt.orderNumber());
+        orchestrator.onInventoryReserved(evt);
     }
 
     //  Consume InventoryOutOfStock event
@@ -73,7 +63,8 @@ public class SagaOrchestrator {
     //  Outbox CreateShipment
     @KafkaHandler
     public void on(@Payload PaymentSucceeded evt) {
-        log.warn(evt.toString()); // tmp fix later
+        log.info("@ PaymentSucceeded: [SAGA] for order={}", evt.orderNumber());
+        orchestrator.onPaymentSucceeded(evt);
     }
 
     //  Consume PaymentFailed event
@@ -88,7 +79,8 @@ public class SagaOrchestrator {
     //  Outbox NotifyCustomer
     @KafkaHandler
     public void on(@Payload ShipmentCreated evt) {
-        log.warn(evt.toString()); // tmp fix later
+        log.info("@ ShipmentCreated: [SAGA] for order={}", evt.orderNumber());
+        orchestrator.onShipmentCreated(evt);
     }
 
     //  Consume ShipmentFailed event

@@ -44,7 +44,7 @@ public class OrderItem {
     private BigDecimal unitPrice; // price at time of purchase
 
     @Column(nullable = false, updatable = false)
-    private int quantity;
+    private int quantity = 0;
 
     @Column(nullable = false, precision = 15, scale = 2, updatable = false)
     private BigDecimal lineTotal;
@@ -60,6 +60,10 @@ public class OrderItem {
                     .multiply(BigDecimal.valueOf(quantity))
                     .setScale(2, java.math.RoundingMode.HALF_UP);
         }
+    }
+
+    public void increaseQuantity(int quantity) {
+        this.quantity += quantity;
     }
 
 }

@@ -200,6 +200,13 @@
             if (response.ok) {
                 currentCustomer = await response.json();
                 console.log('Customer data loaded:', currentCustomer);
+
+                // Check if bankAccountRef exists
+                if (!currentCustomer.bankAccountRef) {
+                    console.warn('Customer has no bankAccountRef, using default');
+                    currentCustomer.bankAccountRef = 'DEFAULT_PAYMENT_REF';
+                }
+
                 updateUIWithCustomerData(currentCustomer);
             } else {
                 console.error('Failed to load customer data');
@@ -290,8 +297,8 @@
 
     // Confirm purchase
     document.getElementById('confirmPurchase').addEventListener('click', async function() {
-            if (!currentProductId || !currentProductCode || !currentCustomer) {
-            alert('Product data not loaded. Please try again.');
+        if (!currentProductId || !currentCustomer) {
+            alert('Customer data not loaded. Please try again.');
             return;
         }
 
@@ -314,6 +321,7 @@
             customerId: currentCustomer.id,
             customerEmail: currentCustomer.email,
             deliveryAddress: currentCustomer.address || 'Default Address',
+            paymentAccountRef: currentCustomer.bankAccountRef || 'DEFAULT_PAYMENT_REF', // ADD THIS FIELD
             shipping: shippingFee,
             tax: tax,
             subTotal: subTotal,
@@ -322,7 +330,7 @@
             orderItems: [
                 {
                     productId: currentProductId,
-                    productCode: currentProductCode, // ADD THIS FIELD
+                    productCode: currentProductCode, // Make sure you have this
                     quantity: quantity,
                     price: productPrice
                 }

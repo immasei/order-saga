@@ -27,8 +27,9 @@ public class Payment {
     @GeneratedValue
     private UUID id;
 
-    @Column(nullable = false, unique = true, updatable = false)
-    private UUID orderId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(nullable = false, updatable = false)
+    private Order order;
 
     @Column(nullable = false, precision = 15, scale = 2, updatable = false)
     private BigDecimal amount;
@@ -37,7 +38,7 @@ public class Payment {
     @Column(nullable=false, length=20)
     private PaymentStatus status = PaymentStatus.PENDING;
 
-    @Column(length = 30, unique = true, nullable = false, updatable = false)
+    @Column(length = 30, unique = true, updatable = false)
     private String providerTxnId;
 
     @Column(length=80, nullable=false, updatable=false)

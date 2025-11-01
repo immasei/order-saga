@@ -17,6 +17,10 @@ public class CreateCustomerDTO extends SignUpDTO {
     @Size(max = 255, message = "Address must not exceed 255 characters.")
     private String address;
 
+    // optional
+    @Size(max = 40, message = "Bank account is too long.")
+    private String bankAccountRef;
+
     @AssertTrue(message = "Role must be CUSTOMER for customer creation.")
     public boolean isCustomerRole() {
         return getRole() != null && getRole().equalsIgnoreCase("CUSTOMER");

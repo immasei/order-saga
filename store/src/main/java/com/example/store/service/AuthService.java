@@ -28,22 +28,38 @@ public class AuthService {
     }
 
     public LoginResponseDTO login(LoginDTO loginDto) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginDto.getEmail(), loginDto.getPassword())
-        );
+        System.out.println("=== LOGIN ATTEMPT ===");
+        System.out.println("Email: " + loginDto.getEmail());
 
-        User user = (User) authentication.getPrincipal();
-        UserDTO userDto = userService.toResponse(user);
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(loginDto.getEmail(), loginDto.getPassword())
+            );
 
-        String accessToken = jwtTokenProvider.generateToken(user.getEmail());
-        String refreshToken = jwtTokenProvider.generateToken(user.getEmail() + "_refresh"); // Simple refresh token
 
-        return LoginResponseDTO.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .email(user.getEmail())
-                .role(String.valueOf(user.getRole()))
-                .build();
+            System.out.println("Authentication successful for: " + authentication.getName());
+
+            User user = (User) authentication.getPrincipal();
+            UserDTO userDto = userService.toResponse(user);
+
+            String token = jwtTokenProvider.generateToken(user.getEmail());
+            System.out.println("JWT Token generated: " + token.substring(0, 20) + "...");
+
+            // You're missing refreshToken variable - fix this
+            String refreshToken = jwtTokenProvider.generateToken(user.getEmail() + "_refresh");
+
+            return LoginResponseDTO.builder()
+                    .accessToken(token)
+                    .refreshToken(refreshToken)
+                    .email(user.getEmail())
+                    .role(user.getRole().name())
+                    .build();
+
+        } catch (Exception e) {
+            System.out.println("Authentication failed: " + e.getMessage());
+            e.printStackTrace();
+            throw e; // Re-throw to see the actual error
+        }
     }
 
     public LoginResponseDTO refreshToken(String refreshToken) {

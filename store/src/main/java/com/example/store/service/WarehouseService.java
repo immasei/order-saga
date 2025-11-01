@@ -4,23 +4,22 @@ import com.example.store.dto.inventory.AssignStockDTO;
 import com.example.store.dto.inventory.CreateWarehouseDTO;
 import com.example.store.dto.inventory.StockDTO;
 import com.example.store.dto.inventory.WarehouseDTO;
-import com.example.store.model.Product;
-import com.example.store.model.Stock;
-import com.example.store.model.Warehouse;
-import com.example.store.model.WarehouseStockManager;
+import com.example.store.model.*;
 import com.example.store.repository.ProductRepository;
-import com.example.store.repository.WarehouseRepository;
 import com.example.store.repository.StockRepository;
+import com.example.store.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class WarehouseService {
 
     private final WarehouseRepository warehouseRepository;
@@ -29,6 +28,7 @@ public class WarehouseService {
     private final WarehouseStockManager manager;
     private final ModelMapper modelMapper;
 
+    // === warehouses
     @Transactional
     public WarehouseDTO createWarehouse(CreateWarehouseDTO warehouseDto) {
         Warehouse warehouse = toEntity(warehouseDto);
@@ -72,6 +72,7 @@ public class WarehouseService {
         return toResponse(warehouse);
     }
 
+    // === Stocks
     @Transactional
     public StockDTO assignStock(AssignStockDTO stockDto) {
         // get existing or throw
@@ -170,7 +171,7 @@ public class WarehouseService {
         return saved.stream().map(this::toResponse).toList();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<StockDTO> getStocksByWarehouseCode(String warehouseCode) {
         Warehouse warehouse = warehouseRepository.findByWarehouseCodeOrThrow(warehouseCode);
 
@@ -180,7 +181,7 @@ public class WarehouseService {
                 .toList();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<StockDTO> getStocksByProductCode(String productCode) {
         Product product = productRepository.findByProductCodeOrThrow(productCode);
 
@@ -205,4 +206,5 @@ public class WarehouseService {
         dto.setProductCode(s.getProduct().getProductCode());
         return dto;
     }
+
 }

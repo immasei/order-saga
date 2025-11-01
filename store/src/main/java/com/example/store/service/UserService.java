@@ -32,7 +32,6 @@ public class UserService implements UserDetailsService {
     // --- UserDetailsService
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        System.out.println("##########################\nusername: " + username + "\n##########################");
         return userRepository.findByEmail(username)
                 .orElseThrow(() -> new BadCredentialsException("User with email "+ username +" not found"));
     }
@@ -69,7 +68,7 @@ public class UserService implements UserDetailsService {
 
     @Transactional
     public UserDTO updateUserById(UUID id, UpdateCustomerDTO userDto) {
-        User user = userRepository.getOrThrow(id);
+        User user = userRepository.getForUpdateOrThrow(id); // get and lock row
         modelMapper.map(userDto, user); // managed entity mutated
         return toResponse(user);        // save() optional; flush on commit
     }

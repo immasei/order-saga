@@ -28,6 +28,8 @@ public class WebSecurityConfig {
             "/js/**",
             "/images/**",
             "/webjars/**",
+            "/favicon.ico",
+            "/**.ico",
             "/login",
             "/register",
             "/forgot-password",

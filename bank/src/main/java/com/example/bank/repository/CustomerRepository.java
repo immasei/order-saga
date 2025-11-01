@@ -13,6 +13,8 @@ import java.util.Optional;
 @Repository
 public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
+    Optional<Customer> findByCustomerRef(String customerRef);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT c FROM Customer c WHERE c.id = :id")
     Optional<Customer> findByIdForUpdate(@Param("id") long id);
@@ -21,6 +23,20 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
         return findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + id));
     }
+
+    default Customer getForUpdateOrThrow(long id) {
+        return findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Customer not found with id: " + id));
+    }
+
+    default Customer findByCustomerRefOrThrow(String customerRef) {
+        return findByCustomerRef(customerRef)
+                .orElseThrow(() -> new com.example.bank.exception.ResourceNotFoundException(
+                        "Customer not found with ref: " + customerRef
+                ));
+    }
+
+
 
 }
 

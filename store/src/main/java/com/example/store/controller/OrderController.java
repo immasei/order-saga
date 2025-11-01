@@ -18,12 +18,11 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
-    private final OrderHandler orderHandler;
 
     // Create a new order
     @PostMapping
     public ResponseEntity<OrderDTO> createOrder(@RequestBody @Valid CreateOrderDTO orderDto) {
-        OrderDTO order = orderHandler.placeOrder(orderDto);
+        OrderDTO order = orderService.placeOrder(orderDto);
         return new ResponseEntity<>(order, HttpStatus.CREATED);
     }
 

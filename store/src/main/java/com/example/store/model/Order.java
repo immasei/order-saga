@@ -3,16 +3,14 @@ package com.example.store.model;
 import com.example.store.enums.OrderStatus;
 import com.github.f4b6a3.ulid.UlidCreator;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 
 @Entity
 @NoArgsConstructor
@@ -20,7 +18,11 @@ import java.util.UUID;
 @Setter
 @Table(
     name = "orders",
-    indexes = @Index(name = "idx_orders_order_number", columnList = "order_number", unique = true)
+    indexes = @Index(name = "idx_orders_order_number", columnList = "order_number"),
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_orders_order_number", columnNames = "order_number"),
+        @UniqueConstraint(name = "uk_orders_idempotency_key", columnNames = "idempotency_key")
+    }
 )
 @ToString
 public class Order {
@@ -39,8 +41,11 @@ public class Order {
     @Column(nullable = false, length = 255, updatable = false)
     private String deliveryAddress;
 
+    @Column(nullable = false, length = 100, updatable = false)
+    private String paymentAccountRef;
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 100)
     private OrderStatus status = OrderStatus.PENDING;
 
     @Column(nullable = false, precision = 15, scale = 2, updatable = false)
@@ -59,8 +64,11 @@ public class Order {
     @CreationTimestamp
     private LocalDateTime placedAt;
 
-    @Column(length=80, nullable=false, updatable=false)
+    @Column(length=80, nullable=false, updatable=false, unique=true)
     private String idempotencyKey;
+
+    @Column(updatable=false, unique=true)
+    private UUID deliveryTrackingId;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems = new ArrayList<>();
@@ -118,5 +126,13 @@ public class Order {
         item.setOrder(this);
         this.orderItems.add(item);
     }
+
+    public boolean isTerminal() {
+        return switch (status) {
+            case CANCELLED, SHIPPED, ERROR_DEAD_LETTER -> true;
+            default -> false;
+        };
+    }
+
 
 }

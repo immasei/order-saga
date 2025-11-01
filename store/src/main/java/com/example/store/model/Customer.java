@@ -20,4 +20,8 @@ public class Customer extends User {
     @Column(length = 255)
     private String address;
 
+    // Reference to external bank account
+    @Column(length = 40)
+    private String bankAccountRef;
+
 }

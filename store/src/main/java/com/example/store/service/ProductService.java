@@ -54,11 +54,6 @@ public class ProductService {
         return toResponse(product);
     }
 
-//    public Product getProductById(UUID id) {
-//        return productRepository.findById(id)
-//                .orElseThrow(() -> new RuntimeException("Product not found"));
-//    }
-
     // --- Mapper
     public Product toEntity(CreateProductDTO dto) {
         return modelMapper.map(dto, Product.class);
