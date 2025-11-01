@@ -1,59 +1,43 @@
 spring:
+  application:
+    name: store
   datasource:
-    url: jdbc:postgresql://localhost:15432/store
-    username: comp5348
-    password: changeme
-    driver-class-name: org.postgresql.Driver
-
-  jpa:
-    hibernate:
-      ddl-auto: validate
-    properties:
-#      jakarta.persistence.schema-generation.database.action: none
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        jdbc:
-          lob:
-            non_contextual_creation: true
-
-  flyway:
-    enabled: true
-    locations: classpath:db/migration
-    baseline-on-migrate: true
-    baseline-version: 1
-    clean-disabled: true
-
+    url: jdbc:postgresql://localhost:5432/store
+    username: yasmineibrahim
+    password: yibr2004
   kafka:
     bootstrap-servers: localhost:19092
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      properties:
-        spring.json.trusted.packages: com.example.store.**
-        spring.json.use.type.headers: true
     consumer:
-      group-id: ${spring.application.name}
+      group-id: store-group
+      auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
         spring.json.trusted.packages: "*"
-        spring.json.use.type.headers: true
-    listener:
-      ack-mode: record
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
----
-app:
-  kafka:
-    partitions: 3
-    replicas: 1
-    topics:
-      orders: orders
-      inventory: inventory
-      payments: payments
-      shipping: shipping
-      notifications: notifications
+server:
+  port: 8080
 
-  endpoints:
-    bank: http://localhost:8081
-    delivery-co: http://localhost:8082
-    email: http://localhost:8083
+jwt:
+  secretKey: ads9f6askj3h4k1hf86asdfiahkjh34a789s6df89ayshkjh3jkh786adsf78ay
+
+deploy:
+  env: development
+
+default:
+  admin:
+    email: admin@example.com
+    password: supersaiya
+
+kafka:
+  topics:
+    orders: "orders"
+    inventory: "inventory"
+    payments: "payments"
+    shipping: "shipping"
+    notifications: "notifications"
+  partitions: 1
+  replicas: 1

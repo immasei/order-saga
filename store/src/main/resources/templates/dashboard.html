@@ -59,11 +59,12 @@
     <div class="row" th:unless="${products.empty}">
         <div class="col-md-6 col-lg-4" th:each="product : ${products}">
             <div class="product-card">
-                <h4 th:text="${product.name}">Product Name</h4>
+                <h4 th:text="${product.productName}">Product Name</h4>
                 <p class="text-muted" th:text="${product.description}">Product description</p>
                 <div class="price" th:text="'$' + ${#numbers.formatDecimal(product.price / 100.0, 1, 2)}">$0.00</div>
                 <button class="btn btn-primary mt-3 w-100"
-                        th:onclick="|purchaseProduct('${product.id}')|">
+                        th:attr="data-product-id=${product.id}"
+                        onclick="purchaseProduct(this)">
                     Purchase
                 </button>
             </div>
@@ -98,21 +99,21 @@
     let currentProductId = null;
 
     // Purchase product function
-    function purchaseProduct(productId) {
+    function purchaseProduct(button) {
+        const productId = button.dataset.productId;
         currentProductId = productId;
 
-        // Get product details (you could also pass these as data attributes)
-        const productCard = document.querySelector(`[onclick="purchaseProduct('${productId}')"]`).closest('.product-card');
+        const productCard = button.closest('.product-card');
         const productName = productCard.querySelector('h4').textContent;
         const productPrice = productCard.querySelector('.price').textContent;
 
         document.getElementById('productName').textContent = productName;
         document.getElementById('productPrice').textContent = productPrice;
 
-        // Show modal
         const modal = new bootstrap.Modal(document.getElementById('purchaseModal'));
         modal.show();
     }
+
 
     // Confirm purchase
     document.getElementById('confirmPurchase').addEventListener('click', async function() {

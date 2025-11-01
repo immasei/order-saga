@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import java.util.Map;
 
 @Configuration
-@ConfigurationProperties(prefix = "app.kafka")
+@ConfigurationProperties(prefix = "kafka.topics")
 @Getter
 @Setter
 public class KafkaTopicProperties {
@@ -16,13 +16,27 @@ public class KafkaTopicProperties {
     private int partitions;
     private short replicas;
 
+    // Add constructor to initialize the map
+    public KafkaTopicProperties() {
+        // Initialize with default values to prevent NPE
+        this.topics = Map.of(
+                "orders", "orders",
+                "inventory", "inventory",
+                "payments", "payments",
+                "shipping", "shipping",
+                "notifications", "notifications"
+        );
+    }
+
     // === Generic helper ===
     public String commandsOf(String base) {
-        return topics.get(base) + ".commands";
+        String topic = topics.get(base);
+        return topic != null ? topic + ".commands" : base + ".commands";
     }
 
     public String eventsOf(String base) {
-        return topics.get(base) + ".events";
+        String topic = topics.get(base);
+        return topic != null ? topic + ".events" : base + ".events";
     }
 
     // === Convenience getters (readable in code) ===
