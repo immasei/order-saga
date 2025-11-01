@@ -38,8 +38,8 @@ public class ShippingHandler {
             shippingService.markShipmentFailed(cmd);
 
         } catch (Exception ex) {
-            log.error("@ CreateShipment: [DELIVERY-CO][UNEXPECTED] Failed to create delivery for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);
-            throw ex;
+            log.error("@ CreateShipment: [DELIVERY-CO][UNEXPECTED] Failed to create delivery for order={}: {}", cmd.orderNumber(), ex.getMessage());
+            shippingService.markShipmentFailed(cmd);
         }
 
     }

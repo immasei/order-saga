@@ -8,6 +8,8 @@ public enum OrderStatus {
     SHIPPED,
     AWAIT_REFUND_THEN_RELEASE,
     AWAIT_RELEASE_THEN_CANCEL,
+
     CANCELLED,
-    ERROR_DEAD_LETTER     // technical issue, human/ops
+    CANCELLED_REFUNDED,
+    CANCELLED_REQUIRES_MANUAL_REFUND,
 }

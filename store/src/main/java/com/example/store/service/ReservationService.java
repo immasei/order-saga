@@ -2,10 +2,7 @@ package com.example.store.service;
 
 import com.example.store.config.KafkaTopicProperties;
 import com.example.store.dto.inventory.*;
-import com.example.store.enums.AggregateType;
-import com.example.store.enums.EventType;
-import com.example.store.enums.ReleaseOutcome;
-import com.example.store.enums.ReservationStatus;
+import com.example.store.enums.*;
 import com.example.store.exception.ConflictException;
 import com.example.store.exception.InsufficientStockException;
 import com.example.store.exception.ReleaseNotAllowedException;
@@ -17,6 +14,7 @@ import com.example.store.kafka.event.InventoryReleaseRejected;
 import com.example.store.kafka.event.InventoryReleased;
 import com.example.store.kafka.event.InventoryReserved;
 import com.example.store.model.*;
+import com.example.store.repository.OrderRepository;
 import com.example.store.repository.ProductRepository;
 import com.example.store.repository.ReservationRepository;
 import com.example.store.repository.StockRepository;
@@ -41,6 +39,8 @@ public class ReservationService {
     private final StockRepository stockRepository;
     private final OutboxService outboxService;
     private final KafkaTopicProperties kafkaProps;
+    private final OrderService orderService;
+    private final OrderRepository orderRepository;
 
     @Transactional(noRollbackFor = {InsufficientStockException.class, ConflictException.class})
     public InventoryAllocationDTO reserveInventory(ReserveInventory cmd) {
@@ -172,7 +172,12 @@ public class ReservationService {
     )
     public InventoryAllocationDTO releaseReservation(ReleaseInventory cmd) {
         final String orderNumber = cmd.orderNumber();
-        final EventType reason = cmd.reason();
+        final EventType reason = cmd.triggerBy();
+
+        Order order = orderRepository.findByOrderNumberForUpdateOrThrow(orderNumber);
+        if (order.isTerminal()) {
+            throw new ReleaseNotAllowedException("Cannot release inventory already committed for order " + orderNumber);
+        }
 
         // 1. Lock row to prevent races with commit/ship flows
         Reservation reservation = reservationRepository

@@ -54,7 +54,7 @@ public class ShippingService {
                     ))
             )
             .bodyToMono(DeliveryResponseDTO.class)
-            .doOnNext(b -> log.info("@ CreateShipment: DeliveryCo response: {}", b))
+            .doOnNext(b -> log.info("@ CreateShipment: [DeliveryCo] response: {}", b))
             .timeout(Duration.ofSeconds(5))
             .block();
     }

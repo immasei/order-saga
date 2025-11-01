@@ -51,7 +51,7 @@ public class SagaOrchestrator {
     }
 
     //  Consume InventoryOutOfStock event
-    //  Outbox CancelOrder
+    //  Outbox NotifyCustomer
     @KafkaHandler
     public void on(@Payload InventoryOutOfStock evt) {
         log.info("@ InventoryOutOfStock: [SAGA][COMPENSATION] for order={}", evt.orderNumber());
@@ -59,7 +59,7 @@ public class SagaOrchestrator {
     }
 
     //  Consume InventoryReleased event
-    //  Outbox cancel and notify
+    //  Outbox NotifyCustomer
     @KafkaHandler
     public void on(@Payload InventoryReleased evt) {
         log.info("@ InventoryReleased: [SAGA][FORWARD] for order={}", evt.orderNumber());
@@ -67,7 +67,7 @@ public class SagaOrchestrator {
     }
 
     //  Consume InventoryReleased event
-    //  Outbox cancel and notify
+    //  Outbox NotifyCustomer
     @KafkaHandler
     public void on(@Payload InventoryReleaseRejected evt) {
         log.info("@ InventoryReleaseRejected: [SAGA][FORWARD] for order={}", evt.orderNumber());
@@ -84,11 +84,27 @@ public class SagaOrchestrator {
     }
 
     //  Consume PaymentFailed event
-    //  Outbox CancelOrder
+    //  Outbox ReleaseInventory
     @KafkaHandler
     public void on(@Payload PaymentFailed evt) {
         log.info("@ PaymentFailed: [SAGA][COMPENSATION] for order={}", evt.orderNumber());
         orchestrator.onPaymentFailed(evt);
+    }
+
+    //  Consume PaymentRefunded event
+    //  Outbox ReleaseInventory
+    @KafkaHandler
+    public void on(@Payload PaymentRefunded evt) {
+        log.info("@ PaymentRefunded: [SAGA][COMPENSATION] for order={}", evt.orderNumber());
+        orchestrator.onPaymentRefunded(evt);
+    }
+
+    //  Consume PaymentRefundRejected event
+    //  Outbox ReleaseInventory
+    @KafkaHandler
+    public void on(@Payload PaymentRefundRejected evt) {
+        log.info("@ PaymentRefundRejected: [SAGA][COMPENSATION] for order={}", evt.orderNumber());
+        orchestrator.onPaymentRefundRejected(evt);
     }
 
     // === Shipping outcomes ===
@@ -101,11 +117,11 @@ public class SagaOrchestrator {
     }
 
     //  Consume ShipmentFailed event
-    //  Outbox CancelOrder
+    //  Outbox RefundPayment
     @KafkaHandler
     public void on(@Payload ShipmentFailed evt) {
-        log.warn(evt.toString()); // tmp fix later
-
+        log.info("@ ShipmentFailed: [SAGA][COMPENSATION] for order={}", evt.orderNumber());
+        orchestrator.onShipmentFailed(evt);
     }
 
     // === Notification outcomes ===

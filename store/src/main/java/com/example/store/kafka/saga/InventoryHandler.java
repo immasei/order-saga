@@ -54,12 +54,12 @@ public class InventoryHandler {
     }
 
     // === Consume ReleaseInventory command
-    // === Outbox InventoryReleased
+    // === Outbox InventoryReleased or InventoryReleasedRejected
     @KafkaHandler
     public void on(@Payload @Valid ReleaseInventory cmd) {
         try {
             reservationService.releaseReservation(cmd); // mark released
-            log.info("@ ReleaseInventory: [STORE][SUCCESS] for order={} reason={}", cmd.orderNumber(), cmd.reason());
+            log.info("@ ReleaseInventory: [STORE][SUCCESS] for order={} reason={}", cmd.orderNumber(), cmd.triggerBy());
 
         } catch (ResourceNotFoundException ex) {
             log.warn("@ ReleaseInventory: [STORE][NOOP] Reservation not found when releasing inventory for order={}, treating as idempotent", cmd.orderNumber());

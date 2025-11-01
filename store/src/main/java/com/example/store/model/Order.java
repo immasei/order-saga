@@ -3,7 +3,6 @@ package com.example.store.model;
 import com.example.store.enums.OrderStatus;
 import com.github.f4b6a3.ulid.UlidCreator;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
@@ -11,6 +10,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
+
+import static com.example.store.enums.OrderStatus.*;
 
 @Entity
 @NoArgsConstructor
@@ -128,8 +129,8 @@ public class Order {
     }
 
     public boolean isTerminal() {
-        return switch (status) {
-            case CANCELLED, SHIPPED, ERROR_DEAD_LETTER -> true;
+        return switch (this.status) {
+            case SHIPPED, CANCELLED, CANCELLED_REFUNDED, CANCELLED_REQUIRES_MANUAL_REFUND -> true;
             default -> false;
         };
     }

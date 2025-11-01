@@ -131,10 +131,20 @@ public class OrderService {
     }
 
     @Transactional
-    public void updateOrderStatus(String orderNumber, OrderStatus newStatus) {
+    public Order updateOrderStatus(String orderNumber, OrderStatus newStatus) {
         Order order = orderRepository
                 .findByOrderNumberForUpdateOrThrow(orderNumber);
         order.setStatus(newStatus);
+        return orderRepository.saveAndFlush(order);
+    }
+
+    @Transactional
+    public Order updateDeliveryTrackingId(String orderNumber, UUID deliveryTrackingId) {
+        Order order = orderRepository
+                .findByOrderNumberForUpdateOrThrow(orderNumber);
+        order.setStatus(OrderStatus.SHIPPED);
+        order.setDeliveryTrackingId(deliveryTrackingId);
+        return orderRepository.saveAndFlush(order);
     }
 
     public Order toEntity(CreateOrderDTO dto) {

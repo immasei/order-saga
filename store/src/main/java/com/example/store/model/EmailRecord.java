@@ -28,7 +28,7 @@ public class EmailRecord {
     @Column(length=255)
     private String subject;
 
-    @Column(length=255)
+    @Column(length=512)
     private String body;
 
     @Enumerated(EnumType.STRING)

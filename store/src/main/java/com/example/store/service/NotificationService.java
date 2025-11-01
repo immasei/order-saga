@@ -62,7 +62,7 @@ public class NotificationService {
                     ))
             )
             .bodyToMono(EmailResponseDTO.class)
-            .doOnNext(b -> log.info("@ NotifyCustomer: Email-Service response: {}", b))
+            .doOnNext(b -> log.info("@ NotifyCustomer: [Email-Service] responsed"))
             .timeout(Duration.ofSeconds(5))
             .block();
     }
