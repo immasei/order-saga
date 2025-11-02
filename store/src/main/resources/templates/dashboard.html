@@ -200,6 +200,23 @@
         }
     }
 
+    // // Cancel order
+    // function cancelOrder(orderId) {
+    //     console.log('Cancelling order:', orderId);
+    //     try {
+    //         const response = await fetch(`/api/orders/{orderNumber}/cancel`, {
+    //             method: 'DELETE',
+    //             headers: {
+    //                 'Authorization': 'Bearer ' + currentToken
+    //             }
+    //         });
+    //     }
+    //     catch (error) {
+    //         console.error('Error cancelling order:', error);
+    //         showOrdersError('Error cancelling order');
+    //     }
+    // }
+
     // Load orders
     async function loadOrders(token = currentToken) {
         try {
@@ -283,6 +300,8 @@
             <div class="order-card">
                 <div class="d-flex justify-content-between align-items-start mb-2">
                     <strong class="text-truncate">${order.orderNumber}</strong>
+                </div>
+                <div class="mb-2">
                     <span class="status-badge status-${order.status.toLowerCase()}">
                         ${order.status}
                     </span>
@@ -296,8 +315,13 @@
                         (Items: $${order.subTotal.toFixed(2)} + Shipping: $${order.shipping.toFixed(2)})
                     </small>
                 </div>
-                <div class="small">
-                    <i class="bi bi-geo-alt"></i> ${escapeHtml(order.deliveryAddress.substring(0, 30))}${order.deliveryAddress.length > 30 ? '...' : ''}
+                <div class="small d-flex align-items-center justify-content-between gap-2">
+                    <span class="text-truncate flex-grow-1">
+                        <i class="bi bi-geo-alt"></i> ${escapeHtml(order.deliveryAddress.substring(0, 30))}${order.deliveryAddress.length > 30 ? '...' : ''}
+                    </span>
+                    <button class="btn btn-primary btn-sm flex-shrink-0" onclick="cancelOrder(${order.orderNumber})">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </button>
                 </div>
                 ${order.deliveryTrackingId ? `
                 <div class="small mt-1">
