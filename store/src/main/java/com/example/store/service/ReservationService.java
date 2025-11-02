@@ -2,16 +2,19 @@ package com.example.store.service;
 
 import com.example.store.config.KafkaTopicProperties;
 import com.example.store.dto.inventory.*;
-import com.example.store.enums.AggregateType;
-import com.example.store.enums.ReservationStatus;
+import com.example.store.enums.*;
+import com.example.store.exception.ConflictException;
 import com.example.store.exception.InsufficientStockException;
+import com.example.store.exception.ReleaseNotAllowedException;
 import com.example.store.exception.ResourceNotFoundException;
 import com.example.store.kafka.command.ReleaseInventory;
 import com.example.store.kafka.command.ReserveInventory;
 import com.example.store.kafka.event.InventoryOutOfStock;
+import com.example.store.kafka.event.InventoryReleaseRejected;
 import com.example.store.kafka.event.InventoryReleased;
 import com.example.store.kafka.event.InventoryReserved;
 import com.example.store.model.*;
+import com.example.store.repository.OrderRepository;
 import com.example.store.repository.ProductRepository;
 import com.example.store.repository.ReservationRepository;
 import com.example.store.repository.StockRepository;
@@ -24,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.example.store.enums.ReservationStatus.RELEASED;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -34,8 +39,10 @@ public class ReservationService {
     private final StockRepository stockRepository;
     private final OutboxService outboxService;
     private final KafkaTopicProperties kafkaProps;
+    private final OrderService orderService;
+    private final OrderRepository orderRepository;
 
-    @Transactional(noRollbackFor = InsufficientStockException.class) // no rollback for business failure
+    @Transactional(noRollbackFor = {InsufficientStockException.class, ConflictException.class})
     public InventoryAllocationDTO reserveInventory(ReserveInventory cmd) {
         final String orderNumber = cmd.orderNumber();
         final String idempotencyKey = cmd.idempotencyKey();
@@ -54,10 +61,10 @@ public class ReservationService {
 
         // 2. Idempotency semantics (no retry)
         if (!Objects.equals(res.getIdempotencyKey(), idempotencyKey)) {
-            throw new IllegalStateException("[Reserve Inventory] Idempotency conflict for order " + orderNumber);
+            throw new ConflictException("Idempotency conflict for order " + orderNumber);
         }
 
-        // 3. Short-circuit terminal states (same key)
+        // 3. Short-circuit terminal states
         if (res.isTerminal()) {
             log.debug("Inventory already processed for order={} status={} - returning cached plan", orderNumber, res.getStatus());
             return toAllocationDto(res);
@@ -94,7 +101,7 @@ public class ReservationService {
         if (!missing.isEmpty()) {
             // mark reservation failed (idempotent result)
             res.setStatus(ReservationStatus.FAILED);
-            res.setFailureReason("Insufficient stock for one or more items");
+            res.setFailureReason(EventType.INVENTORY_OUT_OF_STOCK);
             reservationRepository.save(res);
 
             throw new InsufficientStockException("Not enough stock to fulfill order " + orderNumber, missing);
@@ -139,7 +146,7 @@ public class ReservationService {
     }
 
     @Transactional
-    public void onInventoryOutOfStock(
+    public void markInventoryOutOfStock(
         ReserveInventory cmd, List<InsufficientStockException. MissingItem> missingItems
     ) {
         InventoryOutOfStock evt = InventoryOutOfStock.of(cmd.orderNumber(), missingItems);
@@ -147,63 +154,96 @@ public class ReservationService {
     }
 
     @Transactional
-    public void onOrphanInventoryRelease(ReleaseInventory cmd) {
-        InventoryAllocationDTO empty = new InventoryAllocationDTO(
-            cmd.orderNumber(),
-            cmd.idempotencyKey(),
-            ReservationStatus.RELEASED,
-            List.of()
-        );
-        InventoryReleased evt = InventoryReleased.of(empty, cmd.reason());
-        emitEvent(cmd.orderNumber(), evt.getClass(), evt);
+    public void markOrphanInventoryRelease(ReleaseInventory cmd) {
+        // mark released
+        InventoryReleased evt = InventoryReleased.noOp(cmd);
         emitEvent(cmd.orderNumber(), evt.getClass(), evt);
     }
 
-    @Transactional(propagation = Propagation.REQUIRED)
+    @Transactional
+    public void markInventoryReleaseRejected(ReleaseInventory cmd) {
+        InventoryReleaseRejected evt = InventoryReleaseRejected.of(cmd);
+        emitEvent(cmd.orderNumber(), evt.getClass(), evt);
+    }
+
+    @Transactional(
+        propagation = Propagation.REQUIRED,
+        noRollbackFor = { ResourceNotFoundException.class, ReleaseNotAllowedException.class }
+    )
     public InventoryAllocationDTO releaseReservation(ReleaseInventory cmd) {
         final String orderNumber = cmd.orderNumber();
-        final String reason = cmd.reason();
+        final EventType reason = cmd.triggerBy();
 
-        Reservation reservation = reservationRepository.findByOrderNumberOrThrow(orderNumber);
-
-        if (reservation.getStatus() == ReservationStatus.RELEASED) {
-            return toAllocationDto(reservation);
+        Order order = orderRepository.findByOrderNumberForUpdateOrThrow(orderNumber);
+        if (order.isTerminal()) {
+            throw new ReleaseNotAllowedException("Cannot release inventory already committed for order " + orderNumber);
         }
 
-        if (reservation.getStatus() == ReservationStatus.COMMITTED) {
-            throw new IllegalStateException("Cannot release inventory that has already been committed for order " + orderNumber);
-        }
+        // 1. Lock row to prevent races with commit/ship flows
+        Reservation reservation = reservationRepository
+                .findByOrderNumberForUpdateOrThrow(orderNumber);
 
-        Map<Stock, Integer> adjustments = new LinkedHashMap<>();
-        for (ReservationItem item : reservation.getItems()) {
-            Stock stock = stockRepository.findByProductAndWarehouse(item.getProduct(), item.getWarehouse())
-                    .orElseThrow(() -> new IllegalStateException("Stock row missing for warehouse="
-                            + item.getWarehouse().getWarehouseCode() + " product="
-                            + item.getProduct().getProductCode()));
-            adjustments.merge(stock, item.getQuantity(), Integer::sum);
-        }
+        switch (reservation.getStatus()) {
+            case RELEASED -> {
+                log.debug("[ReservationService] ReleaseInventory idempotent for order={} (RELEASED)", orderNumber);
+                // mark released
+                InventoryReleased evt = InventoryReleased.released(cmd, EventType.ALREADY_RELEASED);
+                emitEvent(cmd.orderNumber(), evt.getClass(), evt);
 
-        adjustments.forEach((stock, quantity) -> {
-            if (stock.getReserved() < quantity) {
-                throw new IllegalStateException("Invariant violated: reserved stock would become negative");
+                return toAllocationDto(reservation);
             }
-            stock.setReserved(stock.getReserved() - quantity);
-        });
+            case COMMITTED -> {
+                // no rollback
+                throw new ReleaseNotAllowedException("Cannot release inventory already committed for order " + orderNumber);
+            }
+            case PENDING, IN_PROGRESS, FAILED, CANCELLED -> {
+                log.debug("[ReservationService] ReleaseInventory no-op for order={} (status={})", orderNumber, reservation.getStatus());
+                // mark released
+                InventoryReleased evt = InventoryReleased.noOp(cmd);
+                emitEvent(cmd.orderNumber(), evt.getClass(), evt);
 
-        reservation.setStatus(ReservationStatus.RELEASED);
-        reservation.setFailureReason(reason);
+                return toAllocationDto(reservation);
+            }
+            case RESERVED -> {
+                Map<Stock, Integer> adjustments = new LinkedHashMap<>();
+                for (ReservationItem item : reservation.getItems()) {
+                    Stock stock = stockRepository.findByProductAndWarehouse(item.getProduct(), item.getWarehouse())
+                            .orElseThrow(() -> new IllegalStateException("Stock row missing for warehouse="
+                                    + item.getWarehouse().getWarehouseCode() + " product="
+                                    + item.getProduct().getProductCode()));
+                    adjustments.merge(stock, item.getQuantity(), Integer::sum);
+                }
 
-        // mark released
-        InventoryAllocationDTO allocation = toAllocationDto(reservation);
-        InventoryReleased evt = InventoryReleased.of(allocation, cmd.reason());
-        emitEvent(cmd.orderNumber(), evt.getClass(), evt);
+                adjustments.forEach((stock, quantity) -> {
+                    if (stock.getReserved() < quantity) {
+                        throw new IllegalStateException("Invariant violated: reserved stock would become negative");
+                    }
+                    stock.setReserved(stock.getReserved() - quantity);
+                });
 
-        return toAllocationDto(reservation);
+                reservation.setStatus(RELEASED);
+                reservation.setFailureReason(reason);
+
+                // mark released
+                InventoryReleased evt = InventoryReleased.released(cmd, EventType.ORDER_NOT_SHIPPED);
+                emitEvent(cmd.orderNumber(), evt.getClass(), evt);
+
+                return toAllocationDto(reservation);
+            }
+            default -> {
+                log.debug("[ReservationService] ReleaseInventory unexpected status={} for order={} (no-op)", reservation.getStatus(), orderNumber);
+                InventoryReleased evt = InventoryReleased.noOp(cmd);
+                emitEvent(cmd.orderNumber(), evt.getClass(), evt);
+
+                return toAllocationDto(reservation);
+            }
+        }
     }
 
     @Transactional(propagation = Propagation.REQUIRED)
     public InventoryAllocationDTO commitReservation(String orderNumber) {
-        Reservation reservation = reservationRepository.findByOrderNumberOrThrow(orderNumber);
+        Reservation reservation = reservationRepository
+                .findByOrderNumberForUpdateOrThrow(orderNumber);
 
         if (reservation.getStatus() == ReservationStatus.COMMITTED) {
             return toAllocationDto(reservation);

@@ -2,14 +2,19 @@ package com.example.store.controller;
 
 import com.example.store.dto.inventory.CreateProductDTO;
 import com.example.store.dto.inventory.ProductDTO;
+import com.example.store.model.Product;
+import com.example.store.repository.ProductRepository;
 import com.example.store.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/products")
@@ -17,7 +22,7 @@ import java.util.List;
 public class ProductController {
 
     private final ProductService productService;
-
+    private final ProductRepository productRepository;
     // Create a new product
     @PostMapping
     public ResponseEntity<ProductDTO> createProduct(@RequestBody @Valid CreateProductDTO productDto) {

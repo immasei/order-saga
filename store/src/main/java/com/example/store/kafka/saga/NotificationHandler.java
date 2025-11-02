@@ -1,8 +1,9 @@
 package com.example.store.kafka.saga;
 
+import com.example.store.dto.notification.EmailResponseDTO;
+import com.example.store.exception.EmailException;
 import com.example.store.kafka.command.NotifyCustomer;
-import com.example.store.service.EmailService;
-import com.example.store.service.OutboxService;
+import com.example.store.service.NotificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,14 +22,24 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class NotificationHandler {
 
-    private final OutboxService outboxService;
-    private final EmailService emailService;
+    private final NotificationService emailService;
 
     // === Consume NotifyCustomer command
     // === Outbox EmailSent or EmailFailed
     @KafkaHandler
     public void on(@Payload @Valid NotifyCustomer cmd) {
-        log.warn(cmd.toString()); // tmp remove later
-        // TODO
+        try {
+            EmailResponseDTO email = emailService.email(cmd);
+            emailService.markEmailSent(cmd, email);
+            log.info("@ NotifyCustomer: [EMAIL][SUCCESS] for order={}, createdAt={}", cmd.orderNumber(), cmd.createdAt());
+
+        } catch (EmailException ex) {
+            log.warn("@ NotifyCustomer: [EMAIL][FAILED] for order={}, status={}, message={}", cmd.orderNumber(), ex.getStatusCode(), ex.getMessage());
+            emailService.markEmailFailed(cmd);
+
+        } catch (Exception ex) {
+            log.error("@ NotifyCustomer: [EMAIL][UNEXPECTED] Failed to notify customer for order={}: {}", cmd.orderNumber(), ex.getMessage());
+            emailService.markEmailFailed(cmd);
+        }
     }
 }

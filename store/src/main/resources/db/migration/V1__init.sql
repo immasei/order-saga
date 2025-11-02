@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     customer_id          uuid          NOT NULL,
     idempotency_key      varchar(80)   NOT NULL,
     payment_account_ref  varchar(100)  NOT NULL,
-    delivery_tracking_id uuid          NOT NULL
+    delivery_tracking_id uuid
 );
 
 CREATE TABLE IF NOT EXISTS public.order_item (
@@ -91,15 +91,26 @@ CREATE TABLE IF NOT EXISTS public.payments (
 
 CREATE TABLE IF NOT EXISTS public.outbox (
     id uuid NOT NULL,
-    aggregate_id     varchar(30)   NOT NULL,
-    aggregate_type   varchar(50)   NOT NULL,
-    event_type       varchar(50)   NOT NULL,
-    topic            varchar(50)   NOT NULL,
-    payload          jsonb         NOT NULL,
-    status           varchar(20)   NOT NULL,
-    attempts         integer       NOT NULL,
-    created_at       timestamp(6)  NOT NULL
+    aggregate_id     varchar(255)   NOT NULL,
+    aggregate_type   varchar(255)   NOT NULL,
+    event_type       varchar(255)   NOT NULL,
+    topic            varchar(255)   NOT NULL,
+    payload          jsonb          NOT NULL,
+    status           varchar(255)   NOT NULL,
+    attempts         integer        NOT NULL,
+    created_at       timestamp(6)   NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS public.email_record (
+    id UUID NOT NULL,
+    order_id uuid NOT NULL,
+    to_address VARCHAR(255) NOT NULL,
+    subject VARCHAR(255),
+    body VARCHAR(512),
+    status VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP NOT NULL
+);
+
 
 -- ======================
 -- Primary Keys & Unique

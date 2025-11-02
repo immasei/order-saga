@@ -20,17 +20,17 @@ public class Outbox {
     @GeneratedValue
     private UUID id;
 
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 255)
     private String aggregateId; // order number
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 50)
+    @Column(nullable = false, length = 255)
     private AggregateType aggregateType;
 
-    @Column(nullable = false, length = 50)
+    @Column(nullable = false, length = 255)
     private String eventType;   // command or event (fact) type
 
-    @Column(nullable = false, length = 50)
+    @Column(nullable = false, length = 255)
     private String topic;       // kafka topic
 
     @JdbcTypeCode(SqlTypes.JSON)
@@ -38,7 +38,7 @@ public class Outbox {
     private String payload;     // Storing JSON payload as String
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 255)
     private OutboxStatus status = OutboxStatus.PENDING;
 
     @Column(nullable = false)

@@ -22,13 +22,13 @@ public class ReservationController {
         return ResponseEntity.ok(reservation);
     }
 
-    @PostMapping("/{orderNumber}/release")
-    public ResponseEntity<InventoryAllocationDTO> releaseReservation(@PathVariable String orderNumber,
-                                                                     @RequestBody @Valid ReleaseReservationRequest request) {
-        InventoryAllocationDTO reservation = reservationService
-                .releaseReservation(ReleaseInventory.of(orderNumber, request.idempotencyKey(), request.reason()));
-        return ResponseEntity.ok(reservation);
-    }
+//    @PostMapping("/{orderNumber}/release")
+//    public ResponseEntity<InventoryAllocationDTO> releaseReservation(@PathVariable String orderNumber,
+//                                                                     @RequestBody @Valid ReleaseReservationRequest request) {
+//        InventoryAllocationDTO reservation = reservationService
+//                .releaseReservation(ReleaseInventory.of(orderNumber, request.idempotencyKey(), request.reason()));
+//        return ResponseEntity.ok(reservation);
+//    }
 
     @PostMapping("/{orderNumber}/commit")
     public ResponseEntity<InventoryAllocationDTO> commitReservation(@PathVariable String orderNumber) {
