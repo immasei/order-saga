@@ -29,6 +29,7 @@ public class JwtTokenProvider {
         return Jwts.builder()
                 .subject(userDto.getId().toString())
                 .claim("email", userDto.getEmail())
+                .claim("username", userDto.getUsername().toString())
                 .claim("role", userDto.getRole().toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24))

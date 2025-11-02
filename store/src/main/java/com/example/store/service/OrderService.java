@@ -133,7 +133,7 @@ public class OrderService {
                 .toList();
     }
 
-    public List<OrderDTO> getALlOrders() {
+    public List<OrderDTO> getAllOrders() {
         return orderRepository.findAll()
                 .stream()
                 .map(this::toResponse)

@@ -17,7 +17,10 @@ class AdminUserBootstrap implements CommandLineRunner {
     private final UserRepository repo;
     private final PasswordEncoder encoder;
 
-    @Value("${default.admin.email:}")
+    @Value("${default.admin.username}")
+    private String username;
+
+    @Value("${default.admin.email}")
     private String email;
 
     @Value("${default.admin.password:}")
@@ -25,9 +28,10 @@ class AdminUserBootstrap implements CommandLineRunner {
 
     @Override public void run(String... args) {
         if (repo.countByRole(UserRole.ADMIN) == 0 &&
-                !email.isBlank() &&
+                !username.isBlank() &&
                 !password.isBlank()) {
             User admin = new Admin();
+            admin.setUsername(username);
             admin.setEmail(email);
             admin.setPassword(encoder.encode(password));
             admin.setRole(UserRole.ADMIN);

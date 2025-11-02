@@ -1,7 +1,6 @@
-package com.example.store.filter;
+package com.example.store.security;
 
 import com.example.store.model.User;
-import com.example.store.security.JwtTokenProvider;
 import com.example.store.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

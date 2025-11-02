@@ -1,6 +1,6 @@
 package com.example.store.config;
 
-import com.example.store.filter.JwtAuthFilter;
+import com.example.store.security.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,9 +29,9 @@ public class WebSecurityConfig {
             "/api/auditlogs/**",
             "/api/delivery/**",
             "/api/inbox/**",
-            "/api/orders/**",
+//            "/api/orders/**",
             "/api/outbox/**",
-            "/api/products/**",
+//            "/api/products/**",
             "/api/product-purchase-history/**",
             "/api/warehouses/**",
             "/api/warehouse-stocks/**"
