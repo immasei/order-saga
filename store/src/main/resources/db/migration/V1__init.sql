@@ -91,15 +91,26 @@ CREATE TABLE IF NOT EXISTS public.payments (
 
 CREATE TABLE IF NOT EXISTS public.outbox (
     id uuid NOT NULL,
-    aggregate_id     varchar(30)   NOT NULL,
-    aggregate_type   varchar(50)   NOT NULL,
-    event_type       varchar(50)   NOT NULL,
-    topic            varchar(50)   NOT NULL,
-    payload          jsonb         NOT NULL,
-    status           varchar(20)   NOT NULL,
-    attempts         integer       NOT NULL,
-    created_at       timestamp(6)  NOT NULL
+    aggregate_id     varchar(255)   NOT NULL,
+    aggregate_type   varchar(255)   NOT NULL,
+    event_type       varchar(255)   NOT NULL,
+    topic            varchar(255)   NOT NULL,
+    payload          jsonb          NOT NULL,
+    status           varchar(255)   NOT NULL,
+    attempts         integer        NOT NULL,
+    created_at       timestamp(6)   NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS public.email_record (
+    id UUID NOT NULL,
+    order_id uuid NOT NULL,
+    to_address VARCHAR(255) NOT NULL,
+    subject VARCHAR(255),
+    body VARCHAR(512),
+    status VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP NOT NULL
+);
+
 
 -- ======================
 -- Primary Keys & Unique

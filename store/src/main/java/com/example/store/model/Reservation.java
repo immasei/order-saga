@@ -1,5 +1,6 @@
 package com.example.store.model;
 
+import com.example.store.enums.EventType;
 import com.example.store.enums.ReservationStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -14,7 +15,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 
-@Entity
+@Entity(name = "Reservation")
 @Table(
     name = "inventory_reservation",
     indexes = @Index(name = "idx_inventory_reservation_order", columnList = "order_number"),
@@ -44,8 +45,9 @@ public class Reservation {
     @Column(length = 80, nullable = false, updatable = false, unique = true)
     private String idempotencyKey;
 
-    @Column(columnDefinition = "TEXT")
-    private String failureReason;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 50, nullable = false)
+    private EventType failureReason;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

@@ -43,4 +43,14 @@ public class WebClientConfig {
                 .build();
     }
 
+    @Bean
+    @Qualifier("emailWebClient")
+    public WebClient emailWebClient(WebClient.Builder builder) {
+        return builder
+                .baseUrl(props.getEmail())
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .build();
+    }
+
 }

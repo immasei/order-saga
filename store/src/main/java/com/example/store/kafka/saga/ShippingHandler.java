@@ -1,9 +1,7 @@
 package com.example.store.kafka.saga;
 
 import com.example.store.dto.delivery.DeliveryResponseDTO;
-import com.example.store.dto.payment.PaymentResponseDTO;
-import com.example.store.exception.BankException;
-import com.example.store.exception.DeliveryException;
+import com.example.store.exception.DeliveryCoException;
 import com.example.store.kafka.command.CreateShipment;
 import com.example.store.service.ShippingService;
 import jakarta.validation.Valid;
@@ -32,16 +30,16 @@ public class ShippingHandler {
     public void on(@Payload @Valid CreateShipment cmd) {
         try {
             DeliveryResponseDTO delivery = shippingService.ship(cmd);
-            shippingService.onShipmentCreated(cmd, delivery);
+            shippingService.markShipmentCreated(cmd, delivery);
             log.info("@ CreateShipment: [DELIVERY-CO][SUCCESS] for order={}", cmd.orderNumber());
 
-        } catch (DeliveryException ex) {
+        } catch (DeliveryCoException ex) {
             log.warn("@ CreateShipment: [DELIVERY-CO][FAILED] for order={}, status={}, message={}", cmd.orderNumber(), ex.getStatusCode(), ex.getMessage());
-            shippingService.onShipmentFailed(cmd);
+            shippingService.markShipmentFailed(cmd);
 
         } catch (Exception ex) {
-            log.error("@ CreateShipment: [DELIVERY-CO][UNEXPECTED] Failed to create delivery for order={}: {}", cmd.orderNumber(), ex.getMessage(), ex);
-            throw ex;
+            log.error("@ CreateShipment: [DELIVERY-CO][UNEXPECTED] Failed to create delivery for order={}: {}", cmd.orderNumber(), ex.getMessage());
+            shippingService.markShipmentFailed(cmd);
         }
 
     }

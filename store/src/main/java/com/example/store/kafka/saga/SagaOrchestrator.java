@@ -39,7 +39,6 @@ public class SagaOrchestrator {
     public void on(@Payload OrderPlaced evt) {
         log.info("@ OrderPlaced for order={}", evt.orderNumber());
         orchestrator.onOrderPlaced(evt);
-
     }
 
     // === Inventory outcomes ===
@@ -47,15 +46,32 @@ public class SagaOrchestrator {
     //  Outbox ChargePayment
     @KafkaHandler
     public void on(@Payload InventoryReserved evt) {
-        log.info("@ InventoryReserved: [SAGA] for order={}", evt.orderNumber());
+        log.info("@ InventoryReserved: [SAGA][FORWARD] for order={}", evt.orderNumber());
         orchestrator.onInventoryReserved(evt);
     }
 
     //  Consume InventoryOutOfStock event
-    //  Outbox CancelOrder
+    //  Outbox NotifyCustomer
     @KafkaHandler
     public void on(@Payload InventoryOutOfStock evt) {
-        log.warn(evt.toString()); // tmp fix later
+        log.info("@ InventoryOutOfStock: [SAGA][COMPENSATION] for order={}", evt.orderNumber());
+        orchestrator.onInventoryOutOfStock(evt);
+    }
+
+    //  Consume InventoryReleased event
+    //  Outbox NotifyCustomer
+    @KafkaHandler
+    public void on(@Payload InventoryReleased evt) {
+        log.info("@ InventoryReleased: [SAGA][FORWARD] for order={}", evt.orderNumber());
+        orchestrator.onInventoryReleased(evt);
+    }
+
+    //  Consume InventoryReleased event
+    //  Outbox NotifyCustomer
+    @KafkaHandler
+    public void on(@Payload InventoryReleaseRejected evt) {
+        log.info("@ InventoryReleaseRejected: [SAGA][FORWARD] for order={}", evt.orderNumber());
+        orchestrator.onInventoryReleaseRejected(evt);
     }
 
     // === Payment outcomes ===
@@ -63,15 +79,32 @@ public class SagaOrchestrator {
     //  Outbox CreateShipment
     @KafkaHandler
     public void on(@Payload PaymentSucceeded evt) {
-        log.info("@ PaymentSucceeded: [SAGA] for order={}", evt.orderNumber());
+        log.info("@ PaymentSucceeded: [SAGA][FORWARD] for order={}", evt.orderNumber());
         orchestrator.onPaymentSucceeded(evt);
     }
 
     //  Consume PaymentFailed event
-    //  Outbox CancelOrder
+    //  Outbox ReleaseInventory
     @KafkaHandler
     public void on(@Payload PaymentFailed evt) {
-        log.warn(evt.toString()); // tmp fix later
+        log.info("@ PaymentFailed: [SAGA][COMPENSATION] for order={}", evt.orderNumber());
+        orchestrator.onPaymentFailed(evt);
+    }
+
+    //  Consume PaymentRefunded event
+    //  Outbox ReleaseInventory
+    @KafkaHandler
+    public void on(@Payload PaymentRefunded evt) {
+        log.info("@ PaymentRefunded: [SAGA][COMPENSATION] for order={}", evt.orderNumber());
+        orchestrator.onPaymentRefunded(evt);
+    }
+
+    //  Consume PaymentRefundRejected event
+    //  Outbox ReleaseInventory
+    @KafkaHandler
+    public void on(@Payload PaymentRefundRejected evt) {
+        log.info("@ PaymentRefundRejected: [SAGA][COMPENSATION] for order={}", evt.orderNumber());
+        orchestrator.onPaymentRefundRejected(evt);
     }
 
     // === Shipping outcomes ===
@@ -79,15 +112,16 @@ public class SagaOrchestrator {
     //  Outbox NotifyCustomer
     @KafkaHandler
     public void on(@Payload ShipmentCreated evt) {
-        log.info("@ ShipmentCreated: [SAGA] for order={}", evt.orderNumber());
+        log.info("@ ShipmentCreated: [SAGA][FORWARD] for order={}", evt.orderNumber());
         orchestrator.onShipmentCreated(evt);
     }
 
     //  Consume ShipmentFailed event
-    //  Outbox CancelOrder
+    //  Outbox RefundPayment
     @KafkaHandler
     public void on(@Payload ShipmentFailed evt) {
-        log.warn(evt.toString()); // tmp fix later
+        log.info("@ ShipmentFailed: [SAGA][COMPENSATION] for order={}", evt.orderNumber());
+        orchestrator.onShipmentFailed(evt);
     }
 
     // === Notification outcomes ===
@@ -95,14 +129,15 @@ public class SagaOrchestrator {
     //  Outbox NotifyCustomer
     @KafkaHandler
     public void on(@Payload EmailFailed evt) {
-        log.warn(evt.toString()); // tmp fix later
+        // No-op or metrics. We've already saved FAILED in markEmailFailed().
+        log.debug("@ EmailFailed: [SAGA] received for order={} \nto={} \nsubject={} \nbody=\n{}", evt.orderNumber(), evt.toAddress(), evt.subject(), evt.body());
     }
 
     //  Consume EmailFailed event
     //  Outbox nothing
     @KafkaHandler
     public void on(@Payload EmailSent evt) {
-        log.warn(evt.toString()); // tmp fix later
+        log.debug("@ EmailSent: [SAGA] received for order={} \nto={} \nsubject={} \nbody=\n{}", evt.orderNumber(), evt.toAddress(), evt.subject(), evt.body());
     }
 
 }

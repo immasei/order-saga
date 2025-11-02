@@ -7,7 +7,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     properties:
       #      jakarta.persistence.schema-generation.database.action: none
       hibernate:
@@ -67,3 +67,8 @@ app:
   delivery:
     # Shared secret for DeliveryCo webhook auth (must match DeliveryCo config)
     secret: change-me
+
+
+logging:
+  level:
+    com.example.store.kafka.saga: DEBUG

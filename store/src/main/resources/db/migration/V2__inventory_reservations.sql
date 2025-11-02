@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS public.inventory_reservation (
     order_number     varchar(30)   NOT NULL,
     status           varchar(20)   NOT NULL,
     idempotency_key  varchar(80)   NOT NULL,
-    failure_reason   text,
+    failure_reason   varchar(50),
     created_at       timestamp(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at       timestamp(6)  NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
