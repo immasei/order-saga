@@ -24,3 +24,11 @@ hs_err_pid*
 replay_pid*
 .gradle/
 build/
+
+# IDE and Build/Dependency Files
+*.lock
+*.bin
+
+# Commonly generated bin/build folders
+*/bin/
+*/build/

@@ -9,7 +9,7 @@ spring:
     hibernate:
       ddl-auto: validate
     properties:
-#      jakarta.persistence.schema-generation.database.action: none
+      #      jakarta.persistence.schema-generation.database.action: none
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         jdbc:
@@ -54,9 +54,20 @@ app:
       notifications: notifications
 
   endpoints:
-    delivery-co: http://localhost:8081
-    bank: http://localhost:8082
+
+    bank: http://localhost:8081
+    delivery-co: http://localhost:8082
     email: http://localhost:8083
+
+  simulation:
+    payments-success-rate: 0.8
+    shipping-success-rate: 0.85
+    notify-success-rate: 0.95
+
+  delivery:
+    # Shared secret for DeliveryCo webhook auth (must match DeliveryCo config)
+    secret: change-me
+
 
 logging:
   level:

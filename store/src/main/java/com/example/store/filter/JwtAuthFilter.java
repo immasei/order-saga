@@ -1,110 +1,71 @@
 package com.example.store.filter;
 
-import com.example.store.model.User;
-import com.example.store.service.JwtService;
-import com.example.store.service.UserService;
+import com.example.store.security.JwtTokenProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.io.IOException;
-import java.util.UUID;
+import java.util.Collection;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private final JwtService jwtService;
-    private final UserService userService;
-    private final AntPathMatcher pathMatcher = new AntPathMatcher();
-
-    @Autowired
-    @Qualifier("handlerExceptionResolver")
-    private HandlerExceptionResolver handlerExceptionResolver;
-
-    private static final String[] PUBLIC_ROUTES = {
-            "/error",
-            "/api/auth/**",
-            "/api/customers/**",
-            "/api/products/**",
-            "/api/warehouses/**",
-            "/api/stocks/**",
-            "/api/orders/**",
-
-            "/api/auditlogs/**",
-            "/api/delivery/**",
-            "/api/inbox/**",
-            "/api/outbox/**",
-            "/api/product-purchase-history/**",
-            "/",
-            "/css/**",
-            "/js/**",
-            "/images/**",
-            "/login",
-            "/dashboard",
-            "/css/**",
-            "/js/**",
-            "/",                    // Home page
-            "/login",               // Login page
-            "/images/**",
-            "/webjars/**"
-    };
-
-    private boolean isPublic(HttpServletRequest request) {
-        String path = request.getServletPath();
-        for (String p : PUBLIC_ROUTES) {
-            if (pathMatcher.match(p, path)) return true;
-        }
-        return false;
-    }
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        // Skip entirely for public endpoints
-        if (isPublic(request)) {
-            filterChain.doFilter(request, response);
-            return;
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+
+        String requestURI = request.getRequestURI();
+        System.out.println("JWT FILTER: Processing request to " + requestURI);
+
+        String token = getTokenFromRequest(request);
+
+        if (token != null) {
+            System.out.println("JWT FILTER: Token found");
+            try {
+                if (jwtTokenProvider.validateToken(token)) {
+                    String email = jwtTokenProvider.getEmailFromToken(token);
+                    System.out.println("JWT FILTER: Valid token for user: " + email);
+
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(email, null, getAuthorities(token));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+
+                } else {
+                    System.out.println("JWT FILTER: Invalid token");
+                }
+            } catch (Exception e) {
+                System.out.println("JWT FILTER: Token validation error: " + e.getMessage());
+            }
+        } else {
+            System.out.println("JWT FILTER: No token found in request");
         }
 
-        try {
-            // 2) No bearer? Just continue (let Spring handle 401 for protected endpoints)
-            final String requestTokenHeader = request.getHeader("Authorization");
-            if (requestTokenHeader == null || !requestTokenHeader.startsWith("Bearer")) {
-                filterChain.doFilter(request, response);
-                return;
-            }
+        filterChain.doFilter(request, response);
+    }
 
-            String token = requestTokenHeader.split("Bearer ")[1];
-            UUID userId = jwtService.getUserIdFromToken(token); // throws ExpiredJwtException
-
-            if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                User user = userService.getUserById(userId);
-                UsernamePasswordAuthenticationToken authenticationToken =
-                        new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-                authenticationToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-            }
-            // call next filter
-            filterChain.doFilter(request, response);
-
-            // do smt with the response
-            // once your request go to filter chain it also comes back via the filter chain
-            // can log the response here
-        } catch (Exception ex) {
-            handlerExceptionResolver.resolveException(request, response, null, ex);
+    private String getTokenFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
         }
+        return null;
+    }
+
+    private Collection<? extends GrantedAuthority> getAuthorities(String token) {
+        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }
 }

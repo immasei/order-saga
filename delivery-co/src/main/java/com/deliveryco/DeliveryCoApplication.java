@@ -2,6 +2,7 @@ package com.deliveryco;
 
 import com.deliveryco.config.properties.DeliveryKafkaProperties;
 import com.deliveryco.config.properties.DeliverySchedulerProperties;
+import com.deliveryco.config.properties.StoreWebhookProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -9,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-@EnableConfigurationProperties({DeliverySchedulerProperties.class, DeliveryKafkaProperties.class})
+@EnableConfigurationProperties({DeliverySchedulerProperties.class, DeliveryKafkaProperties.class, StoreWebhookProperties.class})
 public class DeliveryCoApplication {
 
     public static void main(String[] args) {
