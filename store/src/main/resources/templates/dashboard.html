@@ -60,6 +60,31 @@
             margin-bottom: 20px;
             color: #333;
         }
+        /* Enhanced modal styles */
+        .account-option {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .account-option:hover {
+            border-color: #007bff;
+            background-color: #f8f9fa;
+        }
+
+        .account-option.selected {
+            border-color: #007bff;
+            background-color: #e7f3ff;
+        }
+
+        .order-summary {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+}
     </style>
 </head>
 <body>
@@ -126,7 +151,7 @@
     </div>
 </div>
 
-<!-- Purchase Modal -->
+<!-- Enhanced Purchase Modal with Bank Account Selection -->
 <div class="modal fade" id="purchaseModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -137,9 +162,67 @@
             <div class="modal-body">
                 <p>Are you sure you want to purchase <strong id="productName"></strong>?</p>
                 <p>Price: <strong id="productPrice"></strong></p>
+
                 <div class="mb-3">
                     <label for="productQuantity" class="form-label">Quantity</label>
                     <input type="number" id="productQuantity" class="form-control" value="1" min="1">
+                </div>
+
+                <!-- Bank Account Reference Section -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Payment Method</label>
+
+                    <!-- Saved Account Option (shown if customer has saved account) -->
+                    <div id="savedAccountSection" class="mb-3 p-3 border rounded" style="display: none;">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="accountOption"
+                                   id="useSavedAccount" value="saved" checked>
+                            <label class="form-check-label" for="useSavedAccount">
+                                Use your saved account:
+                                <span id="savedAccountRef" class="fw-bold text-success"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- New Account Option -->
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="accountOption"
+                               id="useNewAccount" value="new">
+                        <label class="form-check-label" for="useNewAccount">
+                            Use a different account
+                        </label>
+                    </div>
+
+                    <!-- New Account Input (hidden by default) -->
+                    <div id="newAccountSection" style="display: none;">
+                        <label for="bankAccountRef" class="form-label">Bank Account Reference</label>
+                        <input type="text" id="bankAccountRef" class="form-control"
+                               placeholder="Enter your bank account reference number">
+                        <div class="form-text">
+                            Enter your bank account reference for this payment.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="border-top pt-3 mt-3">
+                    <h6>Order Summary</h6>
+                    <div class="d-flex justify-content-between small">
+                        <span>Subtotal:</span>
+                        <span id="orderSubtotal">$0.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between small">
+                        <span>Shipping:</span>
+                        <span id="orderShipping">$5.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between small">
+                        <span>Tax (10%):</span>
+                        <span id="orderTax">$0.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between fw-bold mt-1">
+                        <span>Total:</span>
+                        <span id="orderTotal">$0.00</span>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -541,6 +624,213 @@
             window.location.href = '/login';
         }
     });
+
+    // Enhanced purchase product function
+function purchaseProduct(button) {
+    if (!currentCustomer) {
+        alert('Please wait for customer data to load');
+        return;
+    }
+
+    const productId = button.dataset.productId;
+    const productCode = button.dataset.productCode;
+
+    currentProductId = productId;
+    currentProductCode = productCode;
+
+    const productCard = button.closest('.product-card');
+    const productName = productCard.querySelector('h5').textContent;
+    const productPrice = productCard.querySelector('.price').textContent;
+
+    document.getElementById('productName').textContent = productName;
+    document.getElementById('productPrice').textContent = productPrice;
+
+    // Setup bank account options
+    setupBankAccountOptions();
+
+    // Calculate initial order summary
+    calculateOrderSummary();
+
+    const modal = new bootstrap.Modal(document.getElementById('purchaseModal'));
+    modal.show();
+}
+
+// Setup bank account options based on customer data
+function setupBankAccountOptions() {
+    const savedAccountSection = document.getElementById('savedAccountSection');
+    const savedAccountRef = document.getElementById('savedAccountRef');
+    const useSavedAccount = document.getElementById('useSavedAccount');
+    const useNewAccount = document.getElementById('useNewAccount');
+    const newAccountSection = document.getElementById('newAccountSection');
+    const bankAccountRefInput = document.getElementById('bankAccountRef');
+
+    // Reset form
+    bankAccountRefInput.value = '';
+    useSavedAccount.checked = true;
+    newAccountSection.style.display = 'none';
+
+    // Check if customer has a saved bank account
+    if (currentCustomer && currentCustomer.bankAccountRef &&
+        currentCustomer.bankAccountRef !== 'DEFAULT_PAYMENT_REF') {
+
+        // Show saved account option
+        savedAccountSection.style.display = 'block';
+        savedAccountRef.textContent = currentCustomer.bankAccountRef;
+
+        // Set up radio button event listeners
+        useSavedAccount.addEventListener('change', function() {
+            if (this.checked) {
+                newAccountSection.style.display = 'none';
+                bankAccountRefInput.removeAttribute('required');
+            }
+        });
+
+        useNewAccount.addEventListener('change', function() {
+            if (this.checked) {
+                newAccountSection.style.display = 'block';
+                bankAccountRefInput.setAttribute('required', 'required');
+                bankAccountRefInput.focus();
+            }
+        });
+
+    } else {
+        // No saved account - show only new account input
+        savedAccountSection.style.display = 'none';
+        useNewAccount.checked = true;
+        newAccountSection.style.display = 'block';
+        bankAccountRefInput.setAttribute('required', 'required');
+    }
+}
+
+// Calculate and update order summary
+function calculateOrderSummary() {
+    const quantity = parseInt(document.getElementById('productQuantity').value || '1', 10);
+    const productPrice = parseFloat(document.getElementById('productPrice').textContent.replace('$', ''));
+
+    const shippingFee = 5.00;
+    const subTotal = productPrice * quantity;
+    const tax = subTotal * 0.1;
+    const total = subTotal + shippingFee + tax;
+
+    document.getElementById('orderSubtotal').textContent = `$${subTotal.toFixed(2)}`;
+    document.getElementById('orderShipping').textContent = `$${shippingFee.toFixed(2)}`;
+    document.getElementById('orderTax').textContent = `$${tax.toFixed(2)}`;
+    document.getElementById('orderTotal').textContent = `$${total.toFixed(2)}`;
+}
+
+// Get selected bank account reference
+function getSelectedBankAccountRef() {
+    const useSavedAccount = document.getElementById('useSavedAccount');
+    const bankAccountRefInput = document.getElementById('bankAccountRef');
+
+    if (useSavedAccount.checked) {
+        return currentCustomer.bankAccountRef;
+    } else {
+        return bankAccountRefInput.value.trim();
+    }
+}
+
+// Validate bank account reference
+function validateBankAccountRef(accountRef) {
+    if (!accountRef || accountRef.trim() === '') {
+        alert('Please enter a bank account reference');
+        return false;
+    }
+
+    if (accountRef.length < 5) {
+        alert('Bank account reference must be at least 5 characters long');
+        return false;
+    }
+
+    return true;
+}
+
+// Update the confirm purchase event listener
+document.getElementById('confirmPurchase').addEventListener('click', async function() {
+    if (!currentProductId || !currentCustomer) {
+        alert('Customer data not loaded. Please try again.');
+        return;
+    }
+
+    const quantity = parseInt(document.getElementById('productQuantity').value || '1', 10);
+    const token = localStorage.getItem('jwtToken');
+    const bankAccountRef = getSelectedBankAccountRef();
+
+    // Validate bank account reference
+    if (!validateBankAccountRef(bankAccountRef)) {
+        return;
+    }
+
+    if (!token) {
+        alert('Please login again');
+        window.location.href = '/login';
+        return;
+    }
+
+    const shippingFee = 5.00;
+    const productPrice = parseFloat(document.getElementById('productPrice').textContent.replace('$', ''));
+    const subTotal = productPrice * quantity;
+    const tax = subTotal * 0.1;
+    const total = subTotal + shippingFee + tax;
+
+    const orderPayload = {
+        customerId: currentCustomer.id,
+        customerEmail: currentCustomer.email,
+        deliveryAddress: currentCustomer.address || 'Default Address',
+        paymentAccountRef: bankAccountRef,
+        shipping: shippingFee,
+        tax: tax,
+        subTotal: subTotal,
+        total: total,
+        status: 'PLACED',
+        orderItems: [
+            {
+                productId: currentProductId,
+                productCode: currentProductCode,
+                quantity: quantity,
+                price: productPrice
+            }
+        ]
+    };
+
+    console.log('Order payload:', orderPayload);
+
+    try {
+        const response = await fetch('/api/orders', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify(orderPayload)
+        });
+
+        if (response.ok) {
+            alert('Purchase successful!');
+            const modal = bootstrap.Modal.getInstance(document.getElementById('purchaseModal'));
+            modal.hide();
+
+            // Refresh orders to show the new order
+            loadOrders(token);
+        } else {
+            const data = await response.json();
+            console.error('Purchase failed:', data);
+            alert('Purchase failed. Please try again.');
+        }
+    } catch (error) {
+        console.error('Purchase error:', error);
+        alert('Network error. Please try again.');
+    }
+});
+
+// Add event listener for quantity changes to update order summary
+document.getElementById('productQuantity').addEventListener('input', calculateOrderSummary);
+
+// Add event listener for modal show to reset form
+document.getElementById('purchaseModal').addEventListener('show.bs.modal', function() {
+    document.getElementById('productQuantity').value = '1';
+    calculateOrderSummary();
+});
 </script>
 </body>
 </html>
