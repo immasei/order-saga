@@ -29,8 +29,18 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Query("SELECT o FROM Order o WHERE o.orderNumber = :orderNumber")
     Optional<Order> findByOrderNumberForUpdate(@Param("orderNumber") String orderNumber);
 
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select o from Order o where o.orderNumber = :orderNumber")
+    Optional<Order> findByOrderNumberForShare(String orderNumber);
+
     default Order findByOrderNumberForUpdateOrThrow(String orderNumber) {
         return findByOrderNumberForUpdate(orderNumber)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Order not found with code: " + orderNumber));
+    }
+
+    default Order findByOrderNumberForShareOrThrow(String orderNumber) {
+        return findByOrderNumberForShare(orderNumber)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Order not found with code: " + orderNumber));
     }

@@ -34,11 +34,11 @@ public class NotificationHandler {
             log.info("@ NotifyCustomer: [EMAIL][SUCCESS] for order={}, createdAt={}", cmd.orderNumber(), cmd.createdAt());
 
         } catch (EmailException ex) {
-            log.warn("@ NotifyCustomer: [EMAIL][FAILED] for order={}, status={}, message={}", cmd.orderNumber(), ex.getStatusCode(), ex.getMessage());
+            log.warn("@ NotifyCustomer: [EMAIL][FAILED] for order={}, status={}, message={}, createdAt={}", cmd.orderNumber(), ex.getStatusCode(), ex.getMessage(), cmd.createdAt());
             emailService.markEmailFailed(cmd);
 
         } catch (Exception ex) {
-            log.error("@ NotifyCustomer: [EMAIL][UNEXPECTED] Failed to notify customer for order={}: {}", cmd.orderNumber(), ex.getMessage());
+            log.error("@ NotifyCustomer: [EMAIL][UNEXPECTED] Failed to notify customer for order={}: {}, createdAt={}", cmd.orderNumber(), ex.getMessage(), cmd.createdAt());
             emailService.markEmailFailed(cmd);
         }
     }

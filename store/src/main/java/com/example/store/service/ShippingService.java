@@ -5,11 +5,16 @@ import com.example.store.dto.delivery.DeliveryDTO;
 import com.example.store.dto.delivery.DeliveryResponseDTO;
 import com.example.store.dto.payment.ErrorResponse;
 import com.example.store.enums.AggregateType;
+import com.example.store.enums.OrderStatus;
+import com.example.store.exception.CancelledByUserException;
 import com.example.store.exception.DeliveryCoException;
 import com.example.store.kafka.command.CreateShipment;
+import com.example.store.kafka.command.ReserveInventory;
 import com.example.store.kafka.event.ShipmentCreated;
 import com.example.store.kafka.event.ShipmentFailed;
+import com.example.store.model.Order;
 import com.example.store.model.Outbox;
+import com.example.store.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -19,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
+import java.util.EnumSet;
 
 @Slf4j
 @Service
@@ -30,6 +36,21 @@ public class ShippingService {
 
     private final KafkaTopicProperties kafkaProps;
     private final OutboxService outboxService;
+    private final OrderRepository orderRepository;
+
+    public void beforeShipment(CreateShipment cmd) {
+        // check order status
+        Order order = orderRepository
+                .findByOrderNumberOrThrow(cmd.orderNumber());
+
+        EnumSet<OrderStatus> allowed = EnumSet
+                .of(OrderStatus.PAID_AND_AWAIT_SHIPMENT);
+
+        if (!allowed.contains(order.getStatus())) {
+            // Cancellation already requested or order moved on
+            throw new CancelledByUserException("Already cancelled by customer");
+        }
+    }
 
     public DeliveryResponseDTO ship(CreateShipment cmd) {
         var req = new DeliveryDTO();

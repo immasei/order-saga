@@ -2,7 +2,6 @@ package com.example.store.controller;
 
 import com.example.store.dto.order.CreateOrderDTO;
 import com.example.store.dto.order.OrderDTO;
-import com.example.store.kafka.saga.OrderHandler;
 import com.example.store.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -22,7 +22,7 @@ public class OrderController {
     // Create a new order
     @PostMapping
     public ResponseEntity<OrderDTO> createOrder(@RequestBody @Valid CreateOrderDTO orderDto) {
-        OrderDTO order = orderService.placeOrder(orderDto);
+        OrderDTO order = orderService.placeOrder(orderDto); // triggers Kafka event
         return new ResponseEntity<>(order, HttpStatus.CREATED);
     }
 
@@ -40,32 +40,15 @@ public class OrderController {
         return ResponseEntity.ok(orders);
     }
 
-    // Update order details
-//    @PutMapping("/{id}")
-//    public ResponseEntity<Order> updateOrder(@PathVariable UUID id, @RequestBody Order orderDetails) {
-//        Optional<Order> existingOrder = orderDetailsRepository.findById(id);
-//        if (existingOrder.isPresent()) {
-//            Order updatedOrder = existingOrder.get();
-//            updatedOrder.setDeliveryAddress(orderDetails.getDeliveryAddress());
-//            updatedOrder.setStatus(orderDetails.getStatus());
-//            updatedOrder.setSubTotal(orderDetails.getSubTotal());
-//            updatedOrder.setShipping(orderDetails.getShipping());
-//            updatedOrder.setTax(orderDetails.getTax());
-//            updatedOrder.setTotal(orderDetails.getTotal());
-//            updatedOrder.setPlacedAt(orderDetails.getPlacedAt());
-//            orderDetailsRepository.save(updatedOrder);
-//            return ResponseEntity.ok(updatedOrder);
-//        }
-//        return ResponseEntity.notFound().build();
-//    }
-
-    // Delete order by ID
-//    @DeleteMapping("/{id}")
-//    public ResponseEntity<Void> deleteOrder(@PathVariable UUID id) {
-//        if (orderDetailsRepository.existsById(id)) {
-//            orderDetailsRepository.deleteById(id);
-//            return ResponseEntity.noContent().build();
-//        }
-//        return ResponseEntity.notFound().build();
-//    }
+    // Cance
+    // a new order
+    @PostMapping("/{orderNumber}/cancel")
+    public ResponseEntity<?> cancelOrder(@PathVariable String orderNumber) {
+        orderService.requestCancellation(orderNumber); // triggers Kafka event
+        return ResponseEntity.accepted().body(Map.of(
+                "orderNumber", orderNumber,
+                "status", "CANCELLATION_REQUESTED",
+                "message", "Order cancellation has been initiated and will be processed shortly."
+        ));
+    }
 }

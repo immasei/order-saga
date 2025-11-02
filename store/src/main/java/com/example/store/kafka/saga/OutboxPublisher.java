@@ -23,7 +23,7 @@ public class OutboxPublisher {
     private final KafkaTemplate<String, Object> kafka;
 
     // Runs every half-second
-    @Scheduled(fixedDelay = 500)
+    @Scheduled(fixedDelayString = "${scheduler.outbox-publisher.delay}")
     @Transactional
     public void publishBatch() {
         Page<Outbox> page = outboxRepository.findPending(PageRequest.of(0, 100));

@@ -10,6 +10,7 @@ import com.example.store.enums.EventType;
 import com.example.store.enums.OrderStatus;
 import com.example.store.enums.PaymentStatus;
 import com.example.store.exception.BankException;
+import com.example.store.exception.CancelledByUserException;
 import com.example.store.exception.ConflictException;
 import com.example.store.exception.NonRefundableException;
 import com.example.store.kafka.command.ChargePayment;
@@ -34,6 +35,7 @@ import org.springframework.http.HttpStatusCode;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.EnumSet;
 
 @Slf4j
 @Service
@@ -250,6 +252,20 @@ public class PaymentService {
         PaymentRefundRejected evt = PaymentRefundRejected.of(cmd);
         // 2. outbox PaymentFailed to db
         emitEvent(cmd.orderNumber(), evt.getClass(), evt);
+    }
+
+    public void beforePayment(ChargePayment cmd) {
+        // check order status
+        Order order = orderRepository
+                .findByOrderNumberOrThrow(cmd.orderNumber());
+
+        EnumSet<OrderStatus> allowed = EnumSet
+                .of(OrderStatus.RESERVED_AND_AWAIT_PAYMENT);
+
+        if (!allowed.contains(order.getStatus())) {
+            // Cancellation already requested or order moved on
+            throw new CancelledByUserException("Order already cancelled by customer");
+        }
     }
 
     private void emitEvent(String aggregateId, Class<?> type, Object payload) {

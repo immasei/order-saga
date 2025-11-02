@@ -11,8 +11,6 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 
-import static com.example.store.enums.OrderStatus.*;
-
 @Entity
 @NoArgsConstructor
 @Getter
@@ -128,12 +126,36 @@ public class Order {
         this.orderItems.add(item);
     }
 
+    public boolean isCancellable() {
+        return switch (status) {
+            case PENDING, AWAIT_INVENTORY, RESERVED_AND_AWAIT_PAYMENT, PAID_AND_AWAIT_SHIPMENT -> true;
+            default -> false;
+        };
+    }
+
     public boolean isTerminal() {
-        return switch (this.status) {
+        return switch (status) {
             case SHIPPED, CANCELLED, CANCELLED_REFUNDED, CANCELLED_REQUIRES_MANUAL_REFUND -> true;
             default -> false;
         };
     }
+
+    public boolean isCancelled() {
+        return switch (status) {
+            case CANCELLED, CANCELLED_REFUNDED, CANCELLED_REQUIRES_MANUAL_REFUND -> true;
+            default -> false;
+        };
+    }
+
+    public boolean isCancelling() {
+        return switch (status) {
+            case AWAIT_RELEASE_THEN_CANCEL, AWAIT_REFUND_THEN_RELEASE -> true;
+            default -> false;
+        };
+    }
+
+
+
 
 
 }

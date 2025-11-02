@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     customer_id          uuid          NOT NULL,
     idempotency_key      varchar(80)   NOT NULL,
     payment_account_ref  varchar(100)  NOT NULL,
-    delivery_tracking_id uuid          NOT NULL
+    delivery_tracking_id uuid
 );
 
 CREATE TABLE IF NOT EXISTS public.order_item (

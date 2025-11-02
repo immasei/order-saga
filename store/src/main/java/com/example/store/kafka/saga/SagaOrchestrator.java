@@ -1,12 +1,7 @@
 package com.example.store.kafka.saga;
 
-import com.example.store.config.KafkaTopicProperties;
-import com.example.store.enums.AggregateType;
-import com.example.store.kafka.command.*;
 import com.example.store.kafka.event.*;
-import com.example.store.model.Outbox;
 import com.example.store.service.OrchestratorService;
-import com.example.store.service.OutboxService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaHandler;
@@ -32,13 +27,21 @@ public class SagaOrchestrator {
     // === the only class that send Command
     private final OrchestratorService orchestrator;
 
-    // === Kickoff ===
+    // === Order outcomes ===
     //  Consume OrderCreated event
     //  Outbox ReserveInventory
     @KafkaHandler
     public void on(@Payload OrderPlaced evt) {
-        log.info("@ OrderPlaced for order={}", evt.orderNumber());
+        log.info("@ OrderPlaced: [SAGA][FORWARD] for order={}", evt.orderNumber());
         orchestrator.onOrderPlaced(evt);
+    }
+
+    //  Consume OrderCancellationRequested event
+    //  Outbox <?>
+    @KafkaHandler
+    public void on(@Payload OrderCancellationRequested evt) {
+        log.info("@ OrderCancellationRequested: [SAGA][COMPENSATION] for order={}", evt.orderNumber());
+        orchestrator.onOrderCancellationRequested(evt);
     }
 
     // === Inventory outcomes ===
@@ -126,7 +129,7 @@ public class SagaOrchestrator {
 
     // === Notification outcomes ===
     //  Consume EmailFailed event
-    //  Outbox NotifyCustomer
+    //  Outbox nothing
     @KafkaHandler
     public void on(@Payload EmailFailed evt) {
         // No-op or metrics. We've already saved FAILED in markEmailFailed().

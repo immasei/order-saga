@@ -3,10 +3,8 @@ package com.example.store.service;
 import com.example.store.config.KafkaTopicProperties;
 import com.example.store.dto.inventory.*;
 import com.example.store.enums.*;
-import com.example.store.exception.ConflictException;
-import com.example.store.exception.InsufficientStockException;
-import com.example.store.exception.ReleaseNotAllowedException;
-import com.example.store.exception.ResourceNotFoundException;
+import com.example.store.exception.*;
+import com.example.store.kafka.command.ChargePayment;
 import com.example.store.kafka.command.ReleaseInventory;
 import com.example.store.kafka.command.ReserveInventory;
 import com.example.store.kafka.event.InventoryOutOfStock;
@@ -39,10 +37,27 @@ public class ReservationService {
     private final StockRepository stockRepository;
     private final OutboxService outboxService;
     private final KafkaTopicProperties kafkaProps;
-    private final OrderService orderService;
     private final OrderRepository orderRepository;
 
-    @Transactional(noRollbackFor = {InsufficientStockException.class, ConflictException.class})
+    public void beforeReservation(ReserveInventory cmd) {
+        // check order status
+        Order order = orderRepository
+                .findByOrderNumberOrThrow(cmd.orderNumber());
+
+        EnumSet<OrderStatus> allowed = EnumSet
+                .of(OrderStatus.PENDING, OrderStatus.AWAIT_INVENTORY);
+
+        if (!allowed.contains(order.getStatus())) {
+            // Cancellation already requested or order moved on
+            throw new CancelledByUserException("Already cancelled by customer");
+        }
+    }
+
+    @Transactional(noRollbackFor = {
+            InsufficientStockException.class,
+            ConflictException.class,
+            CancelledByUserException.class
+    })
     public InventoryAllocationDTO reserveInventory(ReserveInventory cmd) {
         final String orderNumber = cmd.orderNumber();
         final String idempotencyKey = cmd.idempotencyKey();
@@ -59,9 +74,14 @@ public class ReservationService {
                     return reservationRepository.save(r);
                 });
 
-        // 2. Idempotency semantics (no retry)
+        // 2. Idempotency
         if (!Objects.equals(res.getIdempotencyKey(), idempotencyKey)) {
-            throw new ConflictException("Idempotency conflict for order " + orderNumber);
+            // mark reserved (duplicated)
+            InventoryAllocationDTO allocation = toAllocationDto(res);
+            InventoryReserved evt = InventoryReserved.of(allocation);
+            emitEvent(cmd.orderNumber(), evt.getClass(), evt);
+
+            throw new ConflictException("Reservation conflict for order " + orderNumber);
         }
 
         // 3. Short-circuit terminal states
@@ -154,7 +174,7 @@ public class ReservationService {
     }
 
     @Transactional
-    public void markOrphanInventoryRelease(ReleaseInventory cmd) {
+    public void markOrphanInventoryReleased(ReleaseInventory cmd) {
         // mark released
         InventoryReleased evt = InventoryReleased.noOp(cmd);
         emitEvent(cmd.orderNumber(), evt.getClass(), evt);
@@ -168,7 +188,10 @@ public class ReservationService {
 
     @Transactional(
         propagation = Propagation.REQUIRED,
-        noRollbackFor = { ResourceNotFoundException.class, ReleaseNotAllowedException.class }
+        noRollbackFor = {
+            ResourceNotFoundException.class,
+            ReleaseNotAllowedException.class
+        }
     )
     public InventoryAllocationDTO releaseReservation(ReleaseInventory cmd) {
         final String orderNumber = cmd.orderNumber();

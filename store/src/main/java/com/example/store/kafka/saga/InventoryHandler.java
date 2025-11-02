@@ -1,9 +1,6 @@
 package com.example.store.kafka.saga;
 
-import com.example.store.exception.ConflictException;
-import com.example.store.exception.InsufficientStockException;
-import com.example.store.exception.ReleaseNotAllowedException;
-import com.example.store.exception.ResourceNotFoundException;
+import com.example.store.exception.*;
 import com.example.store.kafka.command.ReleaseInventory;
 import com.example.store.kafka.command.ReserveInventory;
 import com.example.store.service.ReservationService;
@@ -32,24 +29,26 @@ public class InventoryHandler {
     @KafkaHandler
     public void on(@Payload @Valid ReserveInventory cmd) {
         try {
+            reservationService.beforeReservation(cmd); // check order status
+
             // mark reserved
             reservationService.reserveInventory(cmd);
             log.info("@ ReserveInventory: [STORE][SUCCESS] for order={} items={} createdAt={}", cmd.orderNumber(), cmd.items().size(), cmd.createdAt());
 
         } catch (InsufficientStockException ex) {
-            log.warn("@ ReserveInventory: [STORE][FAILED] Inventory insufficient for order={} missing={}", cmd.orderNumber(), ex.getMissing());
+            log.warn("@ ReserveInventory: [STORE][FAILED] Inventory insufficient for order={} missing={} createdAt={}", cmd.orderNumber(), ex.getMissing(), cmd.createdAt());
             // mark out of stock
             reservationService.markInventoryOutOfStock(cmd, ex.getMissing());
 
         } catch (ConflictException ex) {
-            // An order with this orderNumber already exists, but its idempotency key doesn’t match
-            // this is not the same request being retried, it’s a logically different command for the same order
+            // A reservation with this orderNumber already exists
+            log.warn("@ ReserveInventory: [STORE][SKIPPED] reservation already done for order={} message={} createdAt={}", cmd.orderNumber(), ex.getMessage(), cmd.createdAt());
 
-            log.warn("@ ReserveInventory: [STORE][IGNORED] Idempotency conflict for order={} message={}", cmd.orderNumber(), ex.getMessage());
-            // No event emitted; commit & ack message
+        } catch (CancelledByUserException ex) {
+            log.warn("@ ReserveInventory: [SYS][SKIPPED] order already been cancelled for order={}, message={}, createdAt={}", cmd.orderNumber(), ex.getMessage(), cmd.createdAt());
 
         } catch (Exception ex) {
-            log.error("@ ReserveInventory: [STORE][UNEXPECTED] Failed to reserve inventory for order={}: {}", cmd.orderNumber(), ex.getMessage());
+            log.error("@ ReserveInventory: [STORE][UNEXPECTED] Failed to reserve inventory for order={}: {}, createdAt={}", cmd.orderNumber(), ex.getMessage(), cmd.createdAt());
         }
     }
 
@@ -59,18 +58,18 @@ public class InventoryHandler {
     public void on(@Payload @Valid ReleaseInventory cmd) {
         try {
             reservationService.releaseReservation(cmd); // mark released
-            log.info("@ ReleaseInventory: [STORE][SUCCESS] for order={} reason={}", cmd.orderNumber(), cmd.triggerBy());
+            log.info("@ ReleaseInventory: [STORE][SUCCESS] for order={} reason={} createdAt={}", cmd.orderNumber(), cmd.triggerBy(), cmd.createdAt());
 
         } catch (ResourceNotFoundException ex) {
-            log.warn("@ ReleaseInventory: [STORE][NOOP] Reservation not found when releasing inventory for order={}, treating as idempotent", cmd.orderNumber());
-            reservationService.markOrphanInventoryRelease(cmd);
+            log.warn("@ ReleaseInventory: [STORE][NOOP] Reservation not found when releasing inventory for order={}, treating as idempotent, createdAt={}", cmd.orderNumber(), cmd.createdAt());
+            reservationService.markOrphanInventoryReleased(cmd);
 
         } catch (ReleaseNotAllowedException ex) {
-            log.warn("@ ReleaseInventory: [STORE][REJECTED] Reservation already committed={}, unable to release: {}", cmd.orderNumber(), ex.getMessage());
+            log.warn("@ ReleaseInventory: [STORE][REJECTED] Reservation already committed={}, unable to release: {}, createdAt={}", cmd.orderNumber(), ex.getMessage(), cmd.createdAt());
             reservationService.markInventoryReleaseRejected(cmd);
 
         } catch (Exception ex) {
-            log.error("@ ReleaseInventory: [STORE][UNEXPECTED] Failed to release inventory for order={}: {}", cmd.orderNumber(), ex.getMessage());
+            log.error("@ ReleaseInventory: [STORE][UNEXPECTED] Failed to release inventory for order={}: {}, createdAt={}", cmd.orderNumber(), ex.getMessage(), cmd.createdAt());
         }
     }
 }
