@@ -57,11 +57,13 @@ public class InventoryHandler {
     @KafkaHandler
     public void on(@Payload @Valid ReleaseInventory cmd) {
         try {
+            reservationService.beforeRelease(cmd); // check order status
+
             reservationService.releaseReservation(cmd); // mark released
             log.info("@ ReleaseInventory: [STORE][SUCCESS] for order={} reason={} createdAt={}", cmd.orderNumber(), cmd.triggerBy(), cmd.createdAt());
 
         } catch (ResourceNotFoundException ex) {
-            log.warn("@ ReleaseInventory: [STORE][NOOP] Reservation not found when releasing inventory for order={}, treating as idempotent, createdAt={}", cmd.orderNumber(), cmd.createdAt());
+            log.warn("@ ReleaseInventory: [STORE][SKIPPED] Nothing to release for order={}, createdAt={}", cmd.orderNumber(), cmd.createdAt());
             reservationService.markOrphanInventoryReleased(cmd);
 
         } catch (ReleaseNotAllowedException ex) {

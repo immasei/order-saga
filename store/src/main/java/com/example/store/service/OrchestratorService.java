@@ -127,19 +127,19 @@ public class OrchestratorService {
         String body = """
             Order Update: %s
 
-            Your order has been shipped.
-            Order Status: SHIPPED
+            We have received your order.
+            Order Status: %s
 
             Thank you for shopping with us.""".formatted(
                 evt.orderNumber(),
-                EventType.INVENTORY_OUT_OF_STOCK.toString()
+                order.getStatus()
         );
 
         // 1. notify customer
         NotifyCustomer cmd = NotifyCustomer.builder()
                 .orderNumber(evt.orderNumber())
                 .toAddress(order.getCustomer().getEmail())
-                .subject(String.format("[SHIPPED] ORDER %s", evt.orderNumber()))
+                .subject(String.format("[PLACED] ORDER %s", evt.orderNumber()))
                 .body(body)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -405,6 +405,29 @@ public class OrchestratorService {
     }
 
     @Transactional
+    public void onDeliveryLost(DeliveryLost evt) {
+        Order order = orderService
+                .updateOrderStatus(evt.orderNumber(), OrderStatus.AWAIT_REFUND_THEN_RELEASE);
+
+        // demo cancel by user but order is already cancelling due to lost package in delivery
+        if (demo.getCancelled().isAftDeliveryLost()) {
+            orderService.requestCancellation(evt.orderNumber());
+        }
+
+        // 1. creat cmd
+        RefundPayment cmd = RefundPayment.of(order, evt);
+
+        // 2. outbox ReleaseInventory to db
+        Outbox outbox = new Outbox();
+        outbox.setAggregateId(cmd.orderNumber());
+        outbox.setAggregateType(AggregateType.PAYMENT);
+        outbox.setEventType(cmd.getClass().getName());
+        outbox.setTopic(kafkaProps.paymentsCommands());
+        outboxService.save(outbox, cmd);
+    }
+
+
+    @Transactional
     public void onOrderCancellationRequested(OrderCancellationRequested evt) {
         Order order = orderRepository
                 .findByOrderNumberForUpdateOrThrow(evt.orderNumber());
@@ -451,18 +474,20 @@ public class OrchestratorService {
                 outboxService.save(outbox, cmd);
             }
 
-            case SHIPPED -> {
+            case DELIVERY_REQUESTED, AWAIT_CARRIER_PICKUP, IN_TRANSIT, OUT_FOR_DELIVERY -> {
                 String body = """
                     Order Update: %s
             
-                    We regret to inform you that your order has been shipped and it's no longer cancellable.
+                    Unfortunately, the delivery process has started.
+                    We’re unable to cancel it at this stage.
                     
                     Triggered By: %s
-                    Order Status: SHIPPED
+                    Order Status: %s
             
                     Thank you for shopping with us.""".formatted(
                         evt.orderNumber(),
-                        EventType.CANCELLED_BY_USER
+                        EventType.CANCELLED_BY_USER,
+                        order.getStatus()
                     );
 
                 // 1. notify customer
@@ -482,11 +507,11 @@ public class OrchestratorService {
                 outbox.setTopic(kafkaProps.notificationsCommands());
                 outboxService.save(outbox, cmd);
             }
-            case AWAIT_REFUND_THEN_RELEASE, AWAIT_RELEASE_THEN_CANCEL -> {
+            case AWAIT_REFUND_THEN_RELEASE, AWAIT_RELEASE_THEN_CANCEL, LOST_IN_DELIVERY -> {
                 String body = """
                     Order Update: %s
             
-                    Your order is currently being cancelled.
+                    Your order is ALREADY being cancelled.
                     You’ll receive a confirmation email soon.
                     
                     Triggered By: %s

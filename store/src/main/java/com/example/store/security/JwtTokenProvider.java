@@ -1,73 +1,60 @@
 package com.example.store.security;
 
+import com.example.store.dto.account.UserDTO;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
+import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
-import java.util.function.Function;
+import java.util.UUID;
 
-@Component
+@Service
 public class JwtTokenProvider {
 
-    @Value("${jwt.secret:yourSuperSecretKeyThatIsAtLeast32CharactersLong}")
-    private String jwtSecret;
+    @Value("${jwt.secretKey}")
+    private String jwtSecretKey;
 
-    @Value("${jwt.expiration:86400000}") // 24 hours in milliseconds
-    private long jwtExpiration;
-
-    private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+    private SecretKey getSecretKey() {
+        return Keys.hmacShaKeyFor(jwtSecretKey.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateToken(String email) {
+    public String generateAccessToken(UserDTO userDto) {
+        // access token: short-lived token
+        // used for authenticating API requests without re-login
+        // temporarily extended to 1 day for easy testing
+        // (since we don't have a frontend yet to handle automatic token refresh)
         return Jwts.builder()
-                .subject(email)
+                .subject(userDto.getId().toString())
+                .claim("email", userDto.getEmail())
+                .claim("role", userDto.getRole().toString())
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + jwtExpiration))
-                .signWith(getSigningKey())
+                .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24))
+                .signWith(getSecretKey())
                 .compact();
     }
 
-    public String getEmailFromToken(String token) {
-        return extractClaim(token, Claims::getSubject);
+    public String generateRefreshToken(UserDTO userDto) {
+        // refresh token: long-lived token (expires 14 days after issuance)
+        // used to obtain new access tokens without requiring user re-authentication
+        return Jwts.builder()
+                .subject(userDto.getId().toString())
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 60 * 24 * 14))
+                .signWith(getSecretKey())
+                .compact();
     }
 
-    public Date getExpirationDateFromToken(String token) {
-        return extractClaim(token, Claims::getExpiration);
-    }
-
-    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
-        final Claims claims = extractAllClaims(token);
-        return claimsResolver.apply(claims);
-    }
-
-    private Claims extractAllClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
+    public UUID getUserIdFromToken(String token) {
+        // used for both access and refresh token
+        Claims claims = Jwts.parser()
+                .verifyWith(getSecretKey())
                 .build()
-                .parseSignedClaims(token)
+                .parseSignedClaims(token) // throws ExpiredJwtException
                 .getPayload();
+        return UUID.fromString(claims.getSubject());
     }
 
-    public boolean validateToken(String token) {
-        try {
-            Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(token);
-            return true;
-        } catch (Exception e) {
-            System.out.println("JWT validation error: " + e.getMessage());
-            return false;
-        }
-    }
-
-    public boolean isTokenExpired(String token) {
-        final Date expiration = getExpirationDateFromToken(token);
-        return expiration.before(new Date());
-    }
 }

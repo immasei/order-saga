@@ -20,9 +20,9 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @KafkaListener(
-    id = "payments-handler",
-    topics = "#{kafkaTopicProperties.paymentsCommands()}",
-    groupId = "payments-handler"
+        id = "payments-handler",
+        topics = "#{kafkaTopicProperties.paymentsCommands()}",
+        groupId = "payments-handler"
 )
 @RequiredArgsConstructor
 public class PaymentHandler {
@@ -42,7 +42,6 @@ public class PaymentHandler {
                 paymentService.markZeroAmountPaymentSucceed(cmd);
                 log.info("@ ChargePayment: [BANK][SKIPPED] amount=0 for order={}, createdAt={}", cmd.orderNumber(), cmd.createdAt());
             } else {
-                paymentService.beforePayment(cmd);
                 PaymentResponseDTO payment = paymentService.transfer(cmd);
                 paymentService.markPaymentSucceed(cmd, payment);
                 log.info("@ ChargePayment: [BANK][SUCCESS] for order={}, createdAt={}", cmd.orderNumber(), cmd.createdAt());

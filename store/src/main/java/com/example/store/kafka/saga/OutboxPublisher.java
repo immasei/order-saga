@@ -44,7 +44,7 @@ public class OutboxPublisher {
 
                 kafka.send(topic, key, payload).get();
                 outboxRepository.markSent(row.getId());
-                log.info("Outbox SENT topic={}", topic);
+//                log.info("Outbox SENT topic={}", topic);
             } catch (Exception ex) {
                 outboxRepository.markFailed(row.getId());
                 log.error("Outbox FAILED id={} err={}", row.getId(), ex.toString(), ex);

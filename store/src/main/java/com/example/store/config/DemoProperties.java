@@ -16,18 +16,19 @@ public class DemoProperties {
 
     @Getter @Setter
     public static class Cancelled {
-        private boolean aftOrderPlacedBe4Reserved;
-        private boolean aftReservedBe4Paid;
-        private boolean aftPaidBe4Shipped;
-        private boolean aftShipped;
-        private boolean aftPaymentFailed;
-        private boolean aftShipmentFailed;
-        private boolean aftCancelled;
+        private boolean aftOrderPlacedBe4Reserved = false;
+        private boolean aftReservedBe4Paid = false;
+        private boolean aftPaidBe4Shipped = false;
+        private boolean aftShipped = false;
+        private boolean aftPaymentFailed = false;
+        private boolean aftShipmentFailed = false;
+        private boolean aftCancelled = false;
+        private boolean aftDeliveryLost = false;
     }
 
     @Getter @Setter
     public static class Refund {
-        private boolean failed;
+        private boolean failed = false;
     }
 }
 

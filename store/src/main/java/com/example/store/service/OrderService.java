@@ -152,7 +152,7 @@ public class OrderService {
     public Order updateDeliveryTrackingId(String orderNumber, UUID deliveryTrackingId) {
         Order order = orderRepository
                 .findByOrderNumberForUpdateOrThrow(orderNumber);
-        order.setStatus(OrderStatus.SHIPPED);
+        order.setStatus(OrderStatus.DELIVERY_REQUESTED);
         order.setDeliveryTrackingId(deliveryTrackingId);
         return orderRepository.saveAndFlush(order);
     }

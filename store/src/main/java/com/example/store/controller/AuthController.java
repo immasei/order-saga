@@ -47,7 +47,7 @@ public class AuthController {
     // Login
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(
-        @RequestBody @Valid LoginDTO loginDto, HttpServletResponse response
+            @RequestBody @Valid LoginDTO loginDto, HttpServletResponse response
     ) {
         LoginResponseDTO loginResponseDto = authService.login(loginDto);
 
@@ -64,10 +64,10 @@ public class AuthController {
                 .filter(cookie -> "refreshToken".equals(cookie.getName()))
                 .findFirst()
                 .map(Cookie::getValue)
-                .orElseThrow(() -> new AuthenticationServiceException("No cookies found in request. Please login."));
+                .orElseThrow(() -> new AuthenticationServiceException("Refresh token not found in cookies"));
 
-        // Generate a new access token
-        // We don't rotate refresh token
+        // generate a new access token
+        // we dont rotate refresh token
         LoginResponseDTO loginResponseDto = authService.refreshToken(refreshToken);
         return ResponseEntity.ok(loginResponseDto);
     }

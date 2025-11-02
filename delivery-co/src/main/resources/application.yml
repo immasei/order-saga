@@ -46,17 +46,18 @@ deliveryco:
     default-delay: 5s
     jitter: 2s
     loss-rate-default: 0.05
+
   kafka:
     request-topic: delivery.requests
     status-topic: delivery.status
     dead-letter-topic: delivery.status.dlq
 
-store-webhook:
-  enabled: true
-  base-url: http://localhost:8080
-  path: /api/delivery/status-callback
-  secret-header: X-DeliveryCo-Secret
-  secret-value: change-me
+  store-webhook:
+    enabled: true
+    base-url: http://localhost:8080
+    path: /api/delivery/status-callback
+    secret-header: X-DeliveryCo-Secret
+    secret-value: change-me
 
 management:
   endpoints:

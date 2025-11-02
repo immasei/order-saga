@@ -186,6 +186,24 @@ public class ReservationService {
         emitEvent(cmd.orderNumber(), evt.getClass(), evt);
     }
 
+    public void beforeRelease(ReleaseInventory cmd) {
+        // check order status
+        Order order = orderRepository
+                .findByOrderNumberOrThrow(cmd.orderNumber());
+
+        System.out.println(order.getStatus());
+
+        if (order.getStatus() == OrderStatus.LOST_IN_DELIVERY ||
+            cmd.triggerBy() == EventType.LOST_IN_DELIVERY) {
+            throw new ResourceNotFoundException("Lost in delivery order");
+        }
+
+        if (order.isTerminal()) {
+            // Cancellation already requested or order moved on
+            throw new CancelledByUserException("Order is already cancelled");
+        }
+    }
+
     @Transactional(
         propagation = Propagation.REQUIRED,
         noRollbackFor = {
@@ -196,11 +214,6 @@ public class ReservationService {
     public InventoryAllocationDTO releaseReservation(ReleaseInventory cmd) {
         final String orderNumber = cmd.orderNumber();
         final EventType reason = cmd.triggerBy();
-
-        Order order = orderRepository.findByOrderNumberForUpdateOrThrow(orderNumber);
-        if (order.isTerminal()) {
-            throw new ReleaseNotAllowedException("Cannot release inventory already committed for order " + orderNumber);
-        }
 
         // 1. Lock row to prevent races with commit/ship flows
         Reservation reservation = reservationRepository
