@@ -24,7 +24,7 @@ public class JwtTokenProvider {
     public String generateAccessToken(UserDTO userDto) {
         // access token: short-lived token
         // used for authenticating API requests without re-login
-        // temporarily extended to 1 day for easy testing
+        // currently it's 20 minutes
         // (since we don't have a frontend yet to handle automatic token refresh)
         return Jwts.builder()
                 .subject(userDto.getId().toString())
@@ -32,7 +32,7 @@ public class JwtTokenProvider {
                 .claim("username", userDto.getUsername().toString())
                 .claim("role", userDto.getRole().toString())
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 5))
+                .expiration(new Date(System.currentTimeMillis() + 1000L * 60 * 20))
                 .signWith(getSecretKey())
                 .compact();
     }
