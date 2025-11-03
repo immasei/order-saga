@@ -115,11 +115,13 @@
 
 ### 1.3 Setup data
 
-- **Step 1**: Open Bank's frontend on 8082, create 2 bank accounts.
+- **Step 1**: Open Bank's frontend on 8082, create 2 bank accounts
 
-    - **Customer's bank account**: Deposit in 10000. Save the `accountRef` somewhere so when a customer place an order, they need to input there bank account
+    - First create customer, copy `customerRef` "CLI-<something>", then create Account using `customerRef`, copy `accountRef` "BAC-<something>".
 
-    - **Store's bank account**: Copy the `accountRef`. Go to `store/application.properties`, update store's bank account under `store.bank.account.ref`
+    - **With Customer's bank account**: Deposit in 10000. Save the `accountRef` somewhere so when a customer place an order, they need to input there bank account
+
+    - **With Store's bank account**: Copy the `accountRef`. Go to `store/application.properties`, update store's bank account under `store.bank.account.ref`
 
 - **Step 2**: Open Postman to create products/ warehouses and stocks
 
