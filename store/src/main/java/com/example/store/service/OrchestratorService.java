@@ -572,6 +572,39 @@ public class OrchestratorService {
                 outbox.setTopic(kafkaProps.notificationsCommands());
                 outboxService.save(outbox, cmd);
             }
+            case DELIVERED -> {
+                String body = """
+                    Order Update: %s
+            
+                    Your order has ALREADY been delivered. 
+                    It cannot be cancelled at this stage.
+                    
+                    Triggered By: %s
+                    Order Status: %s
+            
+                    Thank you for shopping with us.""".formatted(
+                        evt.orderNumber(),
+                        EventType.CANCELLED_BY_USER,
+                        order.getStatus()
+                );
+
+                // 1. notify customer
+                NotifyCustomer cmd = NotifyCustomer.builder()
+                        .orderNumber(evt.orderNumber())
+                        .toAddress(order.getCustomer().getEmail())
+                        .subject(String.format("[UNABLE TO CANCEL] ORDER %s", evt.orderNumber()))
+                        .body(body)
+                        .createdAt(LocalDateTime.now())
+                        .build();
+
+                // 2. outbox NotifyCustomer to db
+                Outbox outbox = new Outbox();
+                outbox.setAggregateId(cmd.orderNumber());
+                outbox.setAggregateType(AggregateType.NOTIFICATION);
+                outbox.setEventType(cmd.getClass().getName());
+                outbox.setTopic(kafkaProps.notificationsCommands());
+                outboxService.save(outbox, cmd);
+            }
         }
     }
 
