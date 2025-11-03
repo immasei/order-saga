@@ -2,7 +2,7 @@
 
 [How to Run](#how-to-run)
    - [1.1 Docker: Setup Kafka and PostgreSQL](#11-docker-setup-kafka-and-postgresql)
-   - [1.2 Run 4 applications in Intellj](#12-run-4-applications-in-intellj)
+   - [1.2 Run 3 applications in Intellj](#12-run-3-applications-in-intellj)
    - [1.3 Setup Data](#13-setup-data)
 
 [Simulating Order Flow](#simulating-order-flow)
@@ -87,13 +87,7 @@
       ```
 
 
-### 1.2 Run 4 applications in Intellj
-
-- **Store** (backend + frontend)
-
-    ```
-    http://localhost:8080
-    ```
+### 1.2 Run 3 applications in Intellj
 
 - **DeliveryCo** (backend only)
 
@@ -113,6 +107,8 @@
     http://localhost:8083
     ```
 
+- We need to put store's bank account in `Store`'s `application.properties` (next step) before we run it.
+
 ### 1.3 Setup data
 
 - **Step 1**: Open Bank's frontend on 8082, create 2 bank accounts
@@ -124,6 +120,12 @@
     - **With Store's bank account**: Copy the `accountRef`. Go to `store/application.properties`, update store's bank account under `store.bank.account.ref`
 
 - **Step 2**: Open Postman to create products/ warehouses and stocks
+
+  - Run `Store` in Intellij. This is the endpoint for both frontend and backend.
+
+    ```
+    http://localhost:8080
+    ```
 
   - **Sign in** as an Admin: `POST`
     ```
