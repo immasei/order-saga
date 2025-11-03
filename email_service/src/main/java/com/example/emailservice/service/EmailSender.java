@@ -21,7 +21,7 @@ public class EmailSender {
 
 	public EmailMessage send(EmailMessage message) {
 		// For assignment: simulate email send by logging to stdout and marking as SENT
-		log.info("[EmailService] Sending email to {} with subject: {}", message.getToAddress(), message.getSubject());
+		log.info("[EmailService] Sending email \nto={} \nsubject={} \nbody=\n{}", message.getToAddress(), message.getSubject(), message.getBody());
 		message.setStatus("SENT");
 		message.setSentAt(LocalDateTime.now());
 		return emailMessageRepository.save(message);
