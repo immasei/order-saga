@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
+import java.util.UUID;
+
 /**
  * Returned after successful login or signup through public endpoints
  * Contains the tokens and minimal user info required for the client
@@ -19,16 +21,17 @@ import lombok.*;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class LoginResponseDTO extends UserDTO {
 
-    private String username;
-    private String email;
-    private String role;
     private String accessToken;
-//    private String refreshToken;
+
+    @JsonIgnore
+    private String refreshToken; // already attached in cookie
 
     public LoginResponseDTO(UserDTO userDto, String accessToken, String refreshToken) {
+        this.setId(userDto.getId());
+        this.setUsername(userDto.getUsername());
+        this.setEmail(userDto.getEmail());
+        this.setRole(userDto.getRole());
         this.accessToken = accessToken;
-//        this.refreshToken = refreshToken;
-        this.email = userDto.getEmail();
-        this.role = userDto.getRole();
+        this.refreshToken = refreshToken;
     }
 }

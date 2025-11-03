@@ -25,16 +25,23 @@ public class WebSecurityConfig {
 
     public static final String[] PUBLIC_ROUTES = {
             "/error",
+
+            // api
             "/api/auth/**",
-            "/api/auditlogs/**",
             "/api/delivery/**",
-            "/api/inbox/**",
-//            "/api/orders/**",
-            "/api/outbox/**",
-//            "/api/products/**",
-            "/api/product-purchase-history/**",
-            "/api/warehouses/**",
-            "/api/warehouse-stocks/**"
+
+            // resources
+            "/css/**",
+            "/js/**",
+            "/images/**",
+            "/webjars/**",
+            "/favicon.ico",
+            "/**.ico",
+
+            // view
+            "/",
+            "/login",
+            "/dashboard"
     };
 
     @Bean
