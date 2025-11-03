@@ -196,7 +196,7 @@
                     <!-- New Account Input (hidden by default) -->
                     <div id="newAccountSection" style="display: none;">
                         <label for="bankAccountRef" class="form-label">Bank Account Reference</label>
-                        <input type="text" id="bankAccountRef" class="form-control"
+                        <input type="text" id="bankAccountRef" class="form-control" required
                                placeholder="Enter your bank account reference number">
                         <div class="form-text">
                             Enter your bank account reference for this payment.
@@ -237,37 +237,115 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    /** ---------- Token storage helpers ---------- **/
+    function getAccessToken() {
+        return localStorage.getItem('jwtToken');
+    }
+
+    function setAccessToken(t) {
+        if (t) {
+            localStorage.setItem('jwtToken', t);
+            currentToken = t;
+        }
+    }
+
+    function clearAuthAndRedirect() {
+        localStorage.removeItem('jwtToken');
+        localStorage.removeItem('userEmail');
+        localStorage.removeItem('userRole');
+        window.location.href = '/login';
+    }
+
+    async function requireAccessTokenOrRedirect() {
+        if (getAccessToken()) return getAccessToken();
+            try {
+                await refreshAccessToken(); // will redirect on failure
+                if (getAccessToken()) return getAccessToken();
+            } catch { 
+                /* refresh already handled redirect */ 
+            }
+            
+            clearAuthAndRedirect();
+            return null; // not reached
+    }
+
+    /** ---------- One-at-a-time refresh control ---------- **/
+    let refreshInFlight = null;
+    async function refreshAccessToken() {
+        if (!refreshInFlight) {
+                // Same-origin request, cookie will be sent automatically.
+                refreshInFlight = fetch('/api/auth/refresh', {
+                method: 'POST',
+                credentials: 'same-origin'
+            })
+            .then(async (res) => {
+                if (!res.ok) throw new Error('Refresh failed');
+                    
+                const data = await res.json();
+                if (!data.accessToken) throw new Error('No accessToken in refresh response');
+                    
+                setAccessToken(data.accessToken);
+                return data.accessToken;
+            })
+            .catch((err) => {
+                console.error('Token refresh error:', err);
+                clearAuthAndRedirect();
+                throw err;
+            })
+            .finally(() => {
+                setTimeout(() => (refreshInFlight = null), 0);
+            });
+        }
+        return refreshInFlight;
+    }
+
+    /** ---------- Fetch wrapper with auto-refresh ---------- **/
+    async function apiFetch(input, init = {}, retry = true) {
+        await requireAccessTokenOrRedirect(); // if token missing at any state, redirect
+
+        const headers = new Headers(init.headers || {});
+        headers.set('Authorization', 'Bearer ' + getAccessToken());
+
+        let response = await fetch(input, { ...init, headers, credentials: 'same-origin' });
+
+        // 401 - jwt-related exceptions
+        // 403 - forbidden
+        if ((response.status === 401 || response.status === 403) && retry) {
+            try {
+                await refreshAccessToken();
+                const headers2 = new Headers(init.headers || {});
+                headers2.set('Authorization', 'Bearer ' + getAccessToken());
+                response = await fetch(input, { ...init, headers: headers2, credentials: 'same-origin' });
+            } catch {
+                // refreshAccessToken already redirected
+                return response;
+            }
+        }
+
+        // If we *still* have no token for some reason, nuke and redirect
+        if (!getAccessToken()) clearAuthAndRedirect();
+
+        return response;
+    }
+
     let currentProductId = null;
     let currentCustomer = null;
     let currentProductCode = null;
     let currentToken = null;
 
     // Check authentication and load data
-    document.addEventListener('DOMContentLoaded', function() {
-        const token = localStorage.getItem('jwtToken');
-        currentToken = token;
-
-        if (!token) {
-            window.location.href = '/login';
-            return;
-        }
-
+    document.addEventListener('DOMContentLoaded', async function() {
+        await requireAccessTokenOrRedirect();
         console.log('JWT token found, loading dashboard...');
-        loadCustomerData(token);
-        loadProducts(token);
-        loadOrders(token);
+        loadCustomerData();
+        loadProducts();
+        loadOrders();
     });
 
     // Load products
-    async function loadProducts(token = currentToken) {
+    async function loadProducts() {
         try {
-            const response = await fetch('/api/products', {
-                method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer ' + token,
-                    'Content-Type': 'application/json'
-                }
-            });
+            const response = await apiFetch('/api/products', { method: 'GET' });
 
             if (response.ok) {
                 const products = await response.json();
@@ -284,32 +362,31 @@
     }
 
     // // Cancel order
-    // function cancelOrder(orderId) {
-    //     console.log('Cancelling order:', orderId);
-    //     try {
-    //         const response = await fetch(`/api/orders/{orderNumber}/cancel`, {
-    //             method: 'DELETE',
-    //             headers: {
-    //                 'Authorization': 'Bearer ' + currentToken
-    //             }
-    //         });
-    //     }
-    //     catch (error) {
-    //         console.error('Error cancelling order:', error);
-    //         showOrdersError('Error cancelling order');
-    //     }
-    // }
+    async function cancelOrder(orderId) {
+         console.log('Cancelling order:', orderId);
+         try {
+             const response = await apiFetch(`/api/orders/${orderId}/cancel`, { method: 'POST' });
+
+            if (response.ok) {
+                const orders = await response.json();
+                console.log('Order Cancellation Requested!');
+                alert('Order Cancellation Requested!');
+                await loadOrders();   
+            } else {
+                console.error('Failed to cancel order');
+                alert('Failed to cancel order');
+            }
+         }
+         catch (error) {
+             console.error('Error cancelling order:', error);
+             alert("Error cancelling order");
+         }
+    }
 
     // Load orders
-    async function loadOrders(token = currentToken) {
+    async function loadOrders() {
         try {
-            const response = await fetch('/api/orders', {
-                method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer ' + token,
-                    'Content-Type': 'application/json'
-                }
-            });
+            const response = await apiFetch('/api/orders', { method: 'GET' });
 
             if (response.ok) {
                 const orders = await response.json();
@@ -402,7 +479,9 @@
                     <span class="text-truncate flex-grow-1">
                         <i class="bi bi-geo-alt"></i> ${escapeHtml(order.deliveryAddress.substring(0, 30))}${order.deliveryAddress.length > 30 ? '...' : ''}
                     </span>
-                    <button class="btn btn-primary btn-sm flex-shrink-0" onclick="cancelOrder(${order.orderNumber})">
+                    <button class="btn btn-primary btn-sm flex-shrink-0" 
+                            data-order-number="${order.orderNumber}"
+                            onclick="cancelOrder(this.dataset.orderNumber)">
                         <i class="bi bi-x-circle"></i> Cancel
                     </button>
                 </div>
@@ -417,35 +496,26 @@
         ordersContainer.innerHTML = ordersHTML;
     }
 
-    async function loadCustomerData(token) {
-        const userEmail = localStorage.getItem('userEmail');
-        if (!userEmail) {
+    async function loadCustomerData() {
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
             updateUIWithFallbackData();
             return;
         }
 
         try {
-            const response = await fetch(`/api/customers/by-email?email=${encodeURIComponent(userEmail)}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer ' + token,
-                    'Content-Type': 'application/json'
-                }
-            });
+            const response = await apiFetch(`/api/customers/${userId}`, { method: 'GET' });
 
             if (response.ok) {
                 currentCustomer = await response.json();
                 console.log('Customer data loaded:', currentCustomer);
 
-                if (!currentCustomer.bankAccountRef) {
-                    console.warn('Customer has no bankAccountRef, using default');
-                    currentCustomer.bankAccountRef = 'DEFAULT_PAYMENT_REF';
-                }
-
                 updateUIWithCustomerData(currentCustomer);
             } else {
-                console.error('Failed to load customer data');
-                updateUIWithFallbackData();
+                const errorData = await response.json();
+                console.error('Failed to load customer data:', errorData);
+                alert('Bye bye ADMIN. Only customer can create order.');
+                clearAuthAndRedirect();
             }
         } catch (error) {
             console.error('Error loading customer data:', error);
@@ -508,30 +578,6 @@
             .replace(/'/g, "&#039;");
     }
 
-    // Purchase product function
-    function purchaseProduct(button) {
-        if (!currentCustomer) {
-            alert('Please wait for customer data to load');
-            return;
-        }
-
-        const productId = button.dataset.productId;
-        const productCode = button.dataset.productCode;
-
-        currentProductId = productId;
-        currentProductCode = productCode;
-
-        const productCard = button.closest('.product-card');
-        const productName = productCard.querySelector('h5').textContent;
-        const productPrice = productCard.querySelector('.price').textContent;
-
-        document.getElementById('productName').textContent = productName;
-        document.getElementById('productPrice').textContent = productPrice;
-
-        const modal = new bootstrap.Modal(document.getElementById('purchaseModal'));
-        modal.show();
-    }
-
     // Confirm purchase
     document.getElementById('confirmPurchase').addEventListener('click', async function() {
         if (!currentProductId || !currentCustomer) {
@@ -540,30 +586,21 @@
         }
 
         const quantity = parseInt(document.getElementById('productQuantity').value || '1', 10);
-        const token = localStorage.getItem('jwtToken');
+        const bankAccountRef = document.getElementById('bankAccountRef');
 
-        if (!token) {
-            alert('Please login again');
-            window.location.href = '/login';
-            return;
+        if (!bankAccountRef.checkValidity()) {
+            bankAccountRef.reportValidity();
+            return; 
         }
 
         const shippingFee = 5.00;
         const productPrice = parseFloat(document.getElementById('productPrice').textContent.replace('$',''));
-        const subTotal = productPrice * quantity;
-        const tax = subTotal * 0.1;
-        const total = subTotal + shippingFee + tax;
 
         const orderPayload = {
             customerId: currentCustomer.id,
-            customerEmail: currentCustomer.email,
             deliveryAddress: currentCustomer.address || 'Default Address',
-            paymentAccountRef: currentCustomer.bankAccountRef || 'DEFAULT_PAYMENT_REF',
+            paymentAccountRef: bankAccountRef.value,
             shipping: shippingFee,
-            tax: tax,
-            subTotal: subTotal,
-            total: total,
-            status: 'PLACED',
             orderItems: [
                 {
                     productId: currentProductId,
@@ -577,51 +614,38 @@
         console.log('Order payload:', orderPayload);
 
         try {
-            const response = await fetch('/api/orders', {
+            const response = await apiFetch('/api/orders', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + token
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(orderPayload)
             });
 
             if (response.ok) {
-                alert('Purchase successful!');
+                alert('Order received!');
                 const modal = bootstrap.Modal.getInstance(document.getElementById('purchaseModal'));
                 modal.hide();
 
                 // Refresh orders to show the new order
-                loadOrders(token);
+                loadOrders();
             } else {
                 const data = await response.json();
-                console.error('Purchase failed:', data);
-                alert('Purchase failed. Please try again.');
+                console.error('Order failed:', data);
+                alert("Order failed.");
             }
         } catch (error) {
-            console.error('Purchase error:', error);
-            alert('Network error. Please try again.');
+            console.error('Order error:', error);
+            alert("Order error.");
         }
     });
 
     // Logout functionality
     document.getElementById('logoutBtn').addEventListener('click', async function() {
-        const token = localStorage.getItem('jwtToken');
-
         try {
-            await fetch('/api/auth/logout', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + token
-                }
-            });
+            await apiFetch('/api/auth/logout', { method: 'POST' });
         } catch (error) {
             console.error('Logout API error:', error);
         } finally {
-            localStorage.removeItem('jwtToken');
-            localStorage.removeItem('userEmail');
-            localStorage.removeItem('userRole');
-            window.location.href = '/login';
+            clearAuthAndRedirect()
         }
     });
 
@@ -657,9 +681,6 @@ function purchaseProduct(button) {
 
 // Setup bank account options based on customer data
 function setupBankAccountOptions() {
-    const savedAccountSection = document.getElementById('savedAccountSection');
-    const savedAccountRef = document.getElementById('savedAccountRef');
-    const useSavedAccount = document.getElementById('useSavedAccount');
     const useNewAccount = document.getElementById('useNewAccount');
     const newAccountSection = document.getElementById('newAccountSection');
     const bankAccountRefInput = document.getElementById('bankAccountRef');
@@ -669,37 +690,10 @@ function setupBankAccountOptions() {
     useSavedAccount.checked = true;
     newAccountSection.style.display = 'none';
 
-    // Check if customer has a saved bank account
-    if (currentCustomer && currentCustomer.bankAccountRef &&
-        currentCustomer.bankAccountRef !== 'DEFAULT_PAYMENT_REF') {
-
-        // Show saved account option
-        savedAccountSection.style.display = 'block';
-        savedAccountRef.textContent = currentCustomer.bankAccountRef;
-
-        // Set up radio button event listeners
-        useSavedAccount.addEventListener('change', function() {
-            if (this.checked) {
-                newAccountSection.style.display = 'none';
-                bankAccountRefInput.removeAttribute('required');
-            }
-        });
-
-        useNewAccount.addEventListener('change', function() {
-            if (this.checked) {
-                newAccountSection.style.display = 'block';
-                bankAccountRefInput.setAttribute('required', 'required');
-                bankAccountRefInput.focus();
-            }
-        });
-
-    } else {
-        // No saved account - show only new account input
-        savedAccountSection.style.display = 'none';
-        useNewAccount.checked = true;
-        newAccountSection.style.display = 'block';
-        bankAccountRefInput.setAttribute('required', 'required');
-    }
+    // No saved account - show only new account input
+    savedAccountSection.style.display = 'none';
+    useNewAccount.checked = true;
+    newAccountSection.style.display = 'block';
 }
 
 // Calculate and update order summary
@@ -718,18 +712,6 @@ function calculateOrderSummary() {
     document.getElementById('orderTotal').textContent = `$${total.toFixed(2)}`;
 }
 
-// Get selected bank account reference
-function getSelectedBankAccountRef() {
-    const useSavedAccount = document.getElementById('useSavedAccount');
-    const bankAccountRefInput = document.getElementById('bankAccountRef');
-
-    if (useSavedAccount.checked) {
-        return currentCustomer.bankAccountRef;
-    } else {
-        return bankAccountRefInput.value.trim();
-    }
-}
-
 // Validate bank account reference
 function validateBankAccountRef(accountRef) {
     if (!accountRef || accountRef.trim() === '') {
@@ -744,84 +726,6 @@ function validateBankAccountRef(accountRef) {
 
     return true;
 }
-
-// Update the confirm purchase event listener
-document.getElementById('confirmPurchase').addEventListener('click', async function() {
-    if (!currentProductId || !currentCustomer) {
-        alert('Customer data not loaded. Please try again.');
-        return;
-    }
-
-    const quantity = parseInt(document.getElementById('productQuantity').value || '1', 10);
-    const token = localStorage.getItem('jwtToken');
-    const bankAccountRef = getSelectedBankAccountRef();
-
-    // Validate bank account reference
-    if (!validateBankAccountRef(bankAccountRef)) {
-        return;
-    }
-
-    if (!token) {
-        alert('Please login again');
-        window.location.href = '/login';
-        return;
-    }
-
-    const shippingFee = 5.00;
-    const productPrice = parseFloat(document.getElementById('productPrice').textContent.replace('$', ''));
-    const subTotal = productPrice * quantity;
-    const tax = subTotal * 0.1;
-    const total = subTotal + shippingFee + tax;
-
-    const orderPayload = {
-        customerId: currentCustomer.id,
-        customerEmail: currentCustomer.email,
-        deliveryAddress: currentCustomer.address || 'Default Address',
-        paymentAccountRef: bankAccountRef,
-        shipping: shippingFee,
-        tax: tax,
-        subTotal: subTotal,
-        total: total,
-        status: 'PLACED',
-        orderItems: [
-            {
-                productId: currentProductId,
-                productCode: currentProductCode,
-                quantity: quantity,
-                price: productPrice
-            }
-        ]
-    };
-
-    console.log('Order payload:', orderPayload);
-
-    try {
-        const response = await fetch('/api/orders', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify(orderPayload)
-        });
-
-        if (response.ok) {
-            alert('Purchase successful!');
-            const modal = bootstrap.Modal.getInstance(document.getElementById('purchaseModal'));
-            modal.hide();
-
-            // Refresh orders to show the new order
-            loadOrders(token);
-        } else {
-            const data = await response.json();
-            console.error('Purchase failed:', data);
-            alert('Purchase failed. Please try again.');
-        }
-    } catch (error) {
-        console.error('Purchase error:', error);
-        alert('Network error. Please try again.');
-    }
-});
 
 // Add event listener for quantity changes to update order summary
 document.getElementById('productQuantity').addEventListener('input', calculateOrderSummary);

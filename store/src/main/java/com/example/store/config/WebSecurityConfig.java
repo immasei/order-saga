@@ -1,6 +1,6 @@
 package com.example.store.config;
 
-import com.example.store.filter.JwtAuthFilter;
+import com.example.store.security.JwtAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,7 +12,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import static com.example.store.enums.UserRole.*;
+
+import static com.example.store.enums.UserRole.ADMIN;
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -21,35 +23,40 @@ public class WebSecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
 
-    private static final String[] PUBLIC_ROUTES = {
+    public static final String[] PUBLIC_ROUTES = {
             "/error",
+
+            // api
             "/api/auth/**",
+            "/api/delivery/**",
+
+            // resources
             "/css/**",
             "/js/**",
             "/images/**",
             "/webjars/**",
             "/favicon.ico",
             "/**.ico",
+
+            // view
+            "/",
             "/login",
-            "/register",
-            "/forgot-password",
             "/dashboard"
     };
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+        // with the configuration (stateless + JWT filter),
+        // the frontend is responsible for all navigation and redirection logic.
         httpSecurity
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ROUTES).permitAll()
-                        .requestMatchers("/api/admins/**").hasRole(ADMIN.name())
-                        .anyRequest().authenticated() // This includes /dashboard
-                )
-                // Disable form login since we're using JWT
-                .formLogin(form -> form.disable())
-                .logout(logout -> logout.disable()) // We'll handle logout via API
-                .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
+                        .requestMatchers("/api/admins/**")
+                            .hasRole(ADMIN.name())
+                        .anyRequest().authenticated())
+                .csrf(csrfConfig -> csrfConfig.disable())
+                .sessionManagement(sessionConfig -> sessionConfig
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return httpSecurity.build();
@@ -59,4 +66,5 @@ public class WebSecurityConfig {
     AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
+
 }

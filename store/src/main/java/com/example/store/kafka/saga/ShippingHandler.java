@@ -1,6 +1,7 @@
 package com.example.store.kafka.saga;
 
 import com.example.store.dto.delivery.DeliveryResponseDTO;
+import com.example.store.exception.CancelledByUserException;
 import com.example.store.exception.DeliveryCoException;
 import com.example.store.kafka.command.CreateShipment;
 import com.example.store.service.ShippingService;
@@ -29,16 +30,21 @@ public class ShippingHandler {
     @KafkaHandler
     public void on(@Payload @Valid CreateShipment cmd) {
         try {
+            shippingService.beforeShipment(cmd); // check order status
+
             DeliveryResponseDTO delivery = shippingService.ship(cmd);
             shippingService.markShipmentCreated(cmd, delivery);
-            log.info("@ CreateShipment: [DELIVERY-CO][SUCCESS] for order={}", cmd.orderNumber());
+            log.info("@ CreateShipment: [DELIVERY-CO][SUCCESS] for order={} createdAt={}", cmd.orderNumber(), cmd.createdAt());
 
         } catch (DeliveryCoException ex) {
-            log.warn("@ CreateShipment: [DELIVERY-CO][FAILED] for order={}, status={}, message={}", cmd.orderNumber(), ex.getStatusCode(), ex.getMessage());
+            log.warn("@ CreateShipment: [DELIVERY-CO][FAILED] for order={}, status={}, message={}, createdAt={}", cmd.orderNumber(), ex.getStatusCode(), ex.getMessage(), cmd.createdAt());
             shippingService.markShipmentFailed(cmd);
 
+        } catch (CancelledByUserException ex) {
+            log.warn("@ CreateShipment: [SYS][SKIPPED] order already been cancelled for order={}, message={}, createdAt={}", cmd.orderNumber(), ex.getMessage(), cmd.createdAt());
+
         } catch (Exception ex) {
-            log.error("@ CreateShipment: [DELIVERY-CO][UNEXPECTED] Failed to create delivery for order={}: {}", cmd.orderNumber(), ex.getMessage());
+            log.error("@ CreateShipment: [DELIVERY-CO][UNEXPECTED] Failed to create delivery for order={}: {}, createdAt={}", cmd.orderNumber(), ex.getMessage(), cmd.createdAt());
             shippingService.markShipmentFailed(cmd);
         }
 

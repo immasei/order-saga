@@ -8,6 +8,7 @@ import com.example.store.dto.order.OrderItemDTO;
 import com.example.store.enums.AggregateType;
 import com.example.store.enums.OrderStatus;
 import com.example.store.enums.UserRole;
+import com.example.store.kafka.event.OrderCancellationRequested;
 import com.example.store.kafka.event.OrderPlaced;
 import com.example.store.model.*;
 import com.example.store.repository.OrderItemRepository;
@@ -48,15 +49,24 @@ public class OrderService {
 
         // 3. save OrderCreated to db, this event will later be
         //    published by kafka/OutboxPublisher
-        Outbox outbox = new Outbox();
-        outbox.setAggregateId(order.getOrderNumber());
-        outbox.setAggregateType(AggregateType.ORDER);
-        outbox.setEventType(evt.getClass().getName());
-        outbox.setTopic(kafkaProps.ordersEvents());
-        outboxService.save(outbox, evt);
+        emitEvent(evt.orderNumber(), evt.getClass(), evt);
 
         return order;
     }
+
+    // === Cancel order, outbox OrderCancellationRequested
+    @Transactional
+    public void requestCancellation(String orderNumber) {
+        Order order = orderRepository.findByOrderNumberOrThrow(orderNumber);
+
+        // 1. create OrderCancellationRequested event
+        OrderCancellationRequested evt = OrderCancellationRequested.of(order);
+
+        // 2. save
+        emitEvent(evt.orderNumber(), evt.getClass(), evt);
+    }
+
+
 
     @Transactional(propagation = Propagation.REQUIRED)
     public OrderDTO createOrder(CreateOrderDTO orderDto, String idempotencyKey) {
@@ -123,7 +133,7 @@ public class OrderService {
                 .toList();
     }
 
-    public List<OrderDTO> getALlOrders() {
+    public List<OrderDTO> getAllOrders() {
         return orderRepository.findAll()
                 .stream()
                 .map(this::toResponse)
@@ -142,7 +152,7 @@ public class OrderService {
     public Order updateDeliveryTrackingId(String orderNumber, UUID deliveryTrackingId) {
         Order order = orderRepository
                 .findByOrderNumberForUpdateOrThrow(orderNumber);
-        order.setStatus(OrderStatus.SHIPPED);
+        order.setStatus(OrderStatus.DELIVERY_REQUESTED);
         order.setDeliveryTrackingId(deliveryTrackingId);
         return orderRepository.saveAndFlush(order);
     }
@@ -164,6 +174,15 @@ public class OrderService {
         dto.setCustomerEmail(o.getCustomer().getEmail());
         dto.setOrderItems(orderItems);
         return dto;
+    }
+
+    private void emitEvent(String aggregateId, Class<?> type, Object payload) {
+        Outbox outbox = new Outbox();
+        outbox.setAggregateId(aggregateId);
+        outbox.setAggregateType(AggregateType.ORDER);
+        outbox.setEventType(type.getName());
+        outbox.setTopic(kafkaProps.ordersEvents());
+        outboxService.save(outbox, payload);
     }
 
 }

@@ -1,12 +1,18 @@
 # STORE API README
 
-## Base url
+## Frontend & Backend
 ```
 http://localhost:8080
 ```
 
-## latest update (10:00 am thu 30)
-### Docker: kafka and postgre
+## How to Run
+### Docker: Setup kafka and postgre
+
+- Please run the `docker-compose.yml` in `store/` only
+    ```
+    cd store
+    ```
+
 - turn on
    ```
    docker compose up -d 
@@ -25,156 +31,6 @@ http://localhost:8080
 - visit pgadmin http://localhost:5050
 - visit kafkaui http://localhost:6060
 
-### saga & kafka & outbox
-- see `kafka/` folder
-- saga orchestrator only listen to `event/` and create outbox records for `command/`
-- other handlers only listen to `command/` and create outbox records for `event/`
-- `OutboxPublisher` will be scheduled to kafka.send outbox records.
-- try create order you should see some warning logs.
-
-
-### DeliveryCo → Store Webhook (status updates)
-
-Store exposes a REST endpoint to accept delivery status callbacks from DeliveryCo.
-
-- Endpoint
-  - `POST /api/delivery/status-callback`
-  - Header: `X-DeliveryCo-Secret: <shared-secret>` (must match `app.delivery.secret`)
-- Body (JSON)
-```
-{
-  "eventId": "uuid",
-  "externalOrderId": "ORD-1234",
-  "status": "RECEIVED|PICKED_UP|IN_TRANSIT|DELIVERED|LOST|CANCELLED",
-  "reason": "...",
-  "occurredAt": "2025-10-17T10:33:32.790Z"
-}
-```
-- Mapping to Store status
-  - RECEIVED → RESERVED
-  - PICKED_UP, IN_TRANSIT → SHIPPED (adjust if you add an IN_DELIVERY state)
-  - DELIVERED → SHIPPED (or COMPLETED if you add it)
-  - LOST, CANCELLED → CANCELLED
-
-Configure the shared secret
-- In `store/src/main/resources/application.yml`: `app.delivery.secret: change-me`
-- In DeliveryCo: `deliveryco.store-webhook.secret-value: change-me`
-
-### End-to-End Demo (copy/paste)
-
-Prereqs
-- Docker Desktop running. Compose up (DB/Kafka):
-  - `docker compose -f delivery-co/docker-compose.yml up -d`
-- Secrets aligned in Store + DeliveryCo as above.
-- Ports: Store on 8080; DeliveryCo on 8082; EmailService on 8081 (optional).
-
-Run apps
-- Terminal A: `cd store && ./gradlew bootRun`
-- Terminal B: `cd delivery-co && ./gradlew bootRun --args='--server.port=8082'`
-
-Seed Store
-1) Create a customer (copy `id` from the response):
-```
-curl -sS -X POST http://localhost:8080/api/customers -H 'Content-Type: application/json' -d '{
-  "email":"customer+demo@gmail.com","password":"123456","role":"CUSTOMER",
-  "firstName":"Jane","lastName":"Doe","phone":"123-456-7890","address":"123 Test St"
-}'
-```
-2) Create a product (copy `productCode`):
-```
-curl -sS -X POST http://localhost:8080/api/products -H 'Content-Type: application/json' -d '{
-  "productName":"Widget Demo","description":"Demo item","price":12.50
-}'
-```
-3) Place an order (copy `orderNumber` — becomes externalOrderId):
-```
-curl -sS -X POST http://localhost:8080/api/orders -H 'Content-Type: application/json' -d '{
-  "customerId":"<PASTE_CUSTOMER_ID>",
-  "deliveryAddress":"123 Test St",
-  "shipping":5.00,
-  "orderItems":[{"productCode":"<PASTE_PRODUCT_CODE>","quantity":2}]
-}'
-```
-
-Kick off DeliveryCo for that order (DeliveryCo on 8082)
-```
-curl -sS -X POST http://localhost:8082/api/deliveries -H 'Content-Type: application/json' -d '{
-  "externalOrderId":"<PASTE_STORE_ORDER_NUMBER>",
-  "customerId":"C-DEMO",
-  "pickupLocations": { "WH-1":"1 Warehouse Way" },
-  "dropoffAddress":"22 Customer St",
-  "contactEmail":"demo@customer.local",
-  "lossRate":0.05,
-  "items": { "WH-1": {"SKU-1":1} }
-}'
-```
-
-Verify status change in Store
-```
-curl -sS http://localhost:8080/api/orders/<PASTE_STORE_ORDER_NUMBER>
-```
-Expected progression over ~10–20s: `PENDING` → `PAID` → `SHIPPED`.
-
-Optional
-- EmailService: `cd email_service && gradle bootRun` then open `http://localhost:8081` and enter `demo@customer.local` to see one email per status.
-
-Troubleshooting tips
-- 403 when POSTing `/api/deliveries`: you’re hitting Store (8080). DeliveryCo is on 8082.
-- Webhook rejected (401): secrets don’t match; set `app.delivery.secret` in Store and `deliveryco.store-webhook.secret-value` in DeliveryCo to the same value.
-- No status change: test the webhook directly:
-```
-curl -X POST http://localhost:8080/api/delivery/status-callback \
-  -H 'Content-Type: application/json' -H 'X-DeliveryCo-Secret: change-me' \
-  -d '{"eventId":"00000000-0000-0000-0000-000000000000","externalOrderId":"<ORDER>","status":"IN_TRANSIT","reason":"manual","occurredAt":"2025-11-01T06:00:00Z"}'
-```
-### DeliveryCo → Store Webhook (status updates)
-
-Store exposes a REST endpoint to accept delivery status callbacks from DeliveryCo.
-
-- Endpoint
-  - `POST /api/delivery/status-callback`
-  - Header: `X-DeliveryCo-Secret: <shared-secret>` (must match `app.delivery.secret`)
-- Body (JSON)
-```
-{
-  "eventId": "uuid",
-  "externalOrderId": "ORD-1234",
-  "status": "RECEIVED|PICKED_UP|IN_TRANSIT|DELIVERED|LOST|CANCELLED",
-  "reason": "...",
-  "occurredAt": "2025-10-17T10:33:32.790Z"
-}
-```
-- Mapping to Store status
-  - RECEIVED → RESERVED
-  - PICKED_UP, IN_TRANSIT → SHIPPED (or adjust as needed)
-  - DELIVERED → SHIPPED (or COMPLETED if you add it)
-  - LOST, CANCELLED → CANCELLED
-
-Configure shared secret (must match DeliveryCo):
-- `app.delivery.secret: change-me` in `store/src/main/resources/application.yml`
-- In DeliveryCo: `deliveryco.store-webhook.secret-value: change-me`
-   
-
-### Note
-
->Note: if you change/add new @Entity, you might need to drop the store db and create a new one in pgadmin. please also update the schema(s) in resources/db/migration/V1_init.sql.
-
----
-
-## Overview
-
-This project implements a **store management system** using Spring Boot. It includes:
-
-Polymorphism and inheritance are used to generalize behavior:
-
-- **User → Customer / Admin**
-  - `User` is the parent class with fields like `email`, `password`, `role`
-  - `Customer` and `Admin` extend `User` and add specific fields (e.g., `phone`, `address` for Customer)
-- **Warehouse → warehouse_stock_{warehouseCode}**
-  - `Warehouse` holds generic warehouse information
-  - `warehouse_stock_{warehouseCode}` extend the concept to track **stock per warehouse**, enabling polymorphic handling of warehouse inventory
-
----
 
 ## API Endpoints
 
@@ -206,15 +62,16 @@ Polymorphism and inheritance are used to generalize behavior:
     ```
 
     ```json
-    {
-      "email": "a@example.com",
-      "password": "123456",
-      "firstName": "Mickey",
-      "lastName": "Mouse",
-      "role": "CUSTOMER",
-      "address": "123 Main St, Springfield, IL",
-      "phone": "123-456-7890"
-    }
+   {
+     "username": "customer",
+     "email": "comp5348@example.com",
+     "password": "COMP5348",
+     "firstName": "Demo",
+     "lastName": "Account",
+     "role": "CUSTOMER",
+     "address": "123 Main St, Springfield, IL",
+     "phone": "123-456-7890"
+   }
     ```
 - **Body**={`SignUpDTO`, `CreateCustomerDTO`}
 - **Note**: Please save the token and put it in Auth - Bearer Token
@@ -228,13 +85,19 @@ Polymorphism and inheritance are used to generalize behavior:
 
     ```json
     {
-      "email": "admin@example.com",
+      "username": "customer",
+      "password": "COMP5348"
+    }
+    ```
+    ```json
+    {
+      "username": "admin",
       "password": "supersaiya"
     }
     ```
 - **Body**={`LoginDTO`}
 - **Note**:
-  - **This is the default admin account** (editable in `application.properties`)
+  - **Default admin account** is editable in `application.properties`
   - Please save the token and put it in Auth - Bearer Token
 
 
@@ -266,15 +129,16 @@ Polymorphism and inheritance are used to generalize behavior:
     ```
 
     ```json
-    {
-      "email": "customer@gmail.com",
-      "password": "123456",
+   {
+      "username": "customer",
+      "email": "comp5348@example.com",
+      "password": "COMP5348",
+      "firstName": "Demo",
+      "lastName": "Account",
       "role": "CUSTOMER",
-      "firstName": "firstName",
-      "lastName": "lastName",
-      "phone": "123-456-7890",
-      "address": "123 Main St, Springfield, IL"
-    }
+      "address": "123 Main St, Springfield, IL",
+      "phone": "123-456-7890"
+   }
     ```
 - **Body**={`SignUpDTO`, `CreateCustomerDTO`}
 
@@ -319,6 +183,16 @@ Polymorphism and inheritance are used to generalize behavior:
           "productName": "Apple Watch",
           "description": "44mm",
           "price": 193.20
+        },
+        {
+          "productName": "Notebook",
+          "description": "Freebies",
+          "price": 0
+        },
+        {
+          "productName": "Golden Macbook",
+          "description": "Super expensive",
+          "price": 10000000
         }
     ]
     ```
@@ -517,6 +391,7 @@ Polymorphism and inheritance are used to generalize behavior:
 - **Note**:
   - `deliveryAddress` is optional, if not provided use Customer.address (saved when create account)
   - `productCode` is case sensitive
+  - please create a bank account using Bank's frontend `localhost:8082` with sufficient funds (use `deposit`) and copy the `accountRef` here (`BAC-<smt>`)
 
 #### Get order by order number
 - **GET**
@@ -544,28 +419,33 @@ Polymorphism and inheritance are used to generalize behavior:
     http://localhost:8080/api/customers/2439f2f3-01d6-46bf-9933-f8e5b48778f4/orders
     ```
 
-### Polymorphism & Inheritance Notes
-- User → Customer / Admin
-  -  Treat all users generically when needed (e.g., login, listing users)
-  -  Admin-specific and Customer-specific fields are only available when casting to the correct type
-- Warehouse → Warehouse1Stock / Warehouse2Stock
-  - Warehouse contains common information like name and location
-  - Warehouse1Stock & Warehouse2Stock contain stock information per warehouse
-  - Can handle multiple warehouse types polymorphically for stock management
-- OrderItems → ProductPurchaseHistory Service
-  - ProductPurchaseHistoryService updates purchase history from OrderItems
-  - Demonstrates composition and aggregation with inheritance
+### DeliveryCo → Store Webhook (status updates on delivery)
 
+Store exposes a REST endpoint to accept delivery status callbacks from DeliveryCo.
 
-    classDiagram
-    User <|-- Admin
-    User <|-- Customer
+- **POST**
+    ```
+    http://localhost:8080/api/delivery/status-callback
+    ```
 
-    Warehouse <|-- Warehouse1Stock
-    Warehouse <|-- Warehouse2Stock
+- **Note**
+  - Header: `X-DeliveryCo-Secret: <shared-secret>` (must match `app.delivery.secret`)
+  - Body (JSON)
+    ```json
+    {
+        "eventId": "uuid",
+        "externalOrderId": "ORD-1234",
+        "status": "RECEIVED|PICKED_UP|IN_TRANSIT|DELIVERED|LOST|CANCELLED",
+        "reason": "...",
+        "occurredAt": "2025-10-17T10:33:32.790Z"
+    }
+    ```
 
+    - `RECEIVED` > `OrderStatus.AWAIT_CARRIER_PICKUP`
+    - `PICKED_UP`, `IN_TRANSIT` > `OrderStatus.IN_TRANSIT`
+    - `DELIVERED` > `DELIVERED`
+    - `LOST`, `CANCELLED` > `LOST_IN_DELIVERY`
 
-    OrderItems --> ProductPurchaseHistoryService
-
-
-
+  - Configure the shared secret
+    - In `store/src/main/resources/application.yml`: `app.delivery.secret: change-me`
+    - In DeliveryCo: `deliveryco.store-webhook.secret-value: change-me`

@@ -14,7 +14,8 @@ import java.util.*;
 @Table(
     name = "users",
     uniqueConstraints = {
-        @UniqueConstraint(name = "uk_users_email", columnNames = "email")
+        @UniqueConstraint(name = "uk_users_email", columnNames = "email"),
+        @UniqueConstraint(name = "uk_users_username", columnNames = "username")
     }
 )
 @Inheritance(strategy = InheritanceType.JOINED)
@@ -28,6 +29,9 @@ public abstract class User implements UserDetails {
     @Id
     @GeneratedValue
     private UUID id;
+
+    @Column(unique=true, nullable=false, length=50)
+    private String username;
 
     @Column(unique = true, nullable = false)
     private String email;

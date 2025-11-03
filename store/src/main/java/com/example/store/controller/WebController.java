@@ -28,7 +28,7 @@ public class WebController {
 
     @GetMapping("/")
     public String home() {
-        return "redirect:/dashboard";
+        return "dashboard";
     }
 
     @GetMapping("/dashboard")

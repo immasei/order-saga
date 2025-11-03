@@ -50,4 +50,6 @@ public record ReleaseInventory(
                 .createdAt(LocalDateTime.now())
                 .build();
     }
+
+
 }

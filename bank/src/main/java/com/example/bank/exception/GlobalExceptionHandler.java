@@ -36,7 +36,7 @@ public class GlobalExceptionHandler {
         return respond(HttpStatus.CONFLICT, ex.getMessage(), req, null);
     }
 
-    // 400 (business logic: insufficient funds)
+    // 422 (business logic: insufficient funds)
     @ExceptionHandler(InsufficientBalanceException.class)
     public ResponseEntity<ApiError> insufficientBalance(InsufficientBalanceException ex,
                                                         HttpServletRequest req) {

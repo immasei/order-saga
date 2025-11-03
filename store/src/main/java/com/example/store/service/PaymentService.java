@@ -10,6 +10,7 @@ import com.example.store.enums.EventType;
 import com.example.store.enums.OrderStatus;
 import com.example.store.enums.PaymentStatus;
 import com.example.store.exception.BankException;
+import com.example.store.exception.CancelledByUserException;
 import com.example.store.exception.ConflictException;
 import com.example.store.exception.NonRefundableException;
 import com.example.store.kafka.command.ChargePayment;
@@ -31,9 +32,11 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.http.HttpStatusCode;
+import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.EnumSet;
 
 @Slf4j
 @Service
@@ -50,6 +53,20 @@ public class PaymentService {
 
     @Value("${store.bank.account.ref}")
     private String bankAccountRef; // store bank account
+
+    public void beforePayment(ChargePayment cmd) {
+        // check order status
+        Order order = orderRepository
+                .findByOrderNumberOrThrow(cmd.orderNumber());
+
+        EnumSet<OrderStatus> allowed = EnumSet
+                .of(OrderStatus.RESERVED_AND_AWAIT_PAYMENT);
+
+        if (!allowed.contains(order.getStatus())) {
+            // Cancellation already requested or order moved on
+            throw new CancelledByUserException("Order already cancelled by customer");
+        }
+    }
 
     public PaymentResponseDTO transfer(ChargePayment cmd) {
         var req = new TransferDTO();
@@ -70,6 +87,11 @@ public class PaymentService {
                         err.getMessage()
                     ))
             )
+//            .onStatus(HttpStatusCode::isError, resp ->
+//                resp.bodyToMono(String.class)
+//                    .doOnNext(body -> System.err.println("Bank error response: " + body))
+//                    .then(Mono.error(new BankException(404, "Bank request failed")))
+//            )
             .bodyToMono(PaymentResponseDTO.class)
             .doOnNext(b -> log.info("@ ChargePayment: [Bank] response: {}", b))
             .timeout(Duration.ofSeconds(5))
@@ -108,8 +130,8 @@ public class PaymentService {
         final String txnId = payment.getProviderTxnId();
         final boolean hasTxnId = txnId != null && !txnId.isBlank();
 
-        if (order.isTerminal())
-            throw new NonRefundableException("Order already shipped");
+        if (!order.isRefundable())
+            throw new NonRefundableException("Cannot refund: order ends.");
 
         switch (status) {
             case REFUND_SUCCESS: // mark as refunded

@@ -11,6 +11,7 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -27,6 +28,7 @@ public class OrderDTO {
     private BigDecimal shipping;
     private BigDecimal tax;
     private BigDecimal total;
+    private UUID deliveryTrackingId;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime placedAt;
     private List<OrderItemDTO> orderItems;

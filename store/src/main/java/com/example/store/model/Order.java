@@ -11,8 +11,6 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 
-import static com.example.store.enums.OrderStatus.*;
-
 @Entity
 @NoArgsConstructor
 @Getter
@@ -68,7 +66,7 @@ public class Order {
     @Column(length=80, nullable=false, updatable=false, unique=true)
     private String idempotencyKey;
 
-    @Column(updatable=false, unique=true)
+    @Column(unique=true)
     private UUID deliveryTrackingId;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -129,11 +127,34 @@ public class Order {
     }
 
     public boolean isTerminal() {
-        return switch (this.status) {
-            case SHIPPED, CANCELLED, CANCELLED_REFUNDED, CANCELLED_REQUIRES_MANUAL_REFUND -> true;
+        if (isShipped()) return true;
+        if (isCancelled()) return true;
+        return false;
+    }
+
+    public boolean isRefundable() {
+        if (status == OrderStatus.LOST_IN_DELIVERY) return true;
+        if (isShipped()) return false;
+        if (isCancelled()) return false;
+        return true;
+    }
+
+    public boolean isShipped() {
+        return switch (status) {
+            case DELIVERY_REQUESTED, AWAIT_CARRIER_PICKUP, IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED -> true;
             default -> false;
         };
     }
+
+    public boolean isCancelled() {
+        return switch (status) {
+            case CANCELLED, CANCELLED_REFUNDED, CANCELLED_REQUIRES_MANUAL_REFUND, LOST_IN_DELIVERY -> true;
+            default -> false;
+        };
+    }
+
+
+
 
 
 }

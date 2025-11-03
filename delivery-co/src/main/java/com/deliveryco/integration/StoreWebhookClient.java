@@ -3,6 +3,7 @@ package com.deliveryco.integration;
 import com.deliveryco.config.properties.StoreWebhookProperties;
 import com.deliveryco.entity.DeliveryOrderEntity;
 import com.deliveryco.entity.DeliveryStatusEventEntity;
+import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -13,6 +14,7 @@ import reactor.core.publisher.Mono;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -28,7 +30,7 @@ public class StoreWebhookClient {
         }
         try {
             String url = props.baseUrl() + (props.path() != null ? props.path() : "/api/delivery/status-callback");
-            Map<String, Object> payload = toPayload(event, order);
+            DeliveryStatusCallbackDTO payload = toPayload(event, order);
             WebClient client = webClientBuilder.build();
             client.post()
                     .uri(url)
@@ -51,14 +53,32 @@ public class StoreWebhookClient {
         }
     }
 
-    private Map<String, Object> toPayload(DeliveryStatusEventEntity event, DeliveryOrderEntity order) {
-        Map<String, Object> m = new HashMap<>();
-        m.put("eventId", event.getId());
-        m.put("externalOrderId", order.getExternalOrderId());
-        m.put("status", event.getStatus().name());
-        m.put("occurredAt", OffsetDateTime.from(event.getOccurredAt()));
-        m.put("reason", event.getReason());
+    private DeliveryStatusCallbackDTO toPayload(DeliveryStatusEventEntity event, DeliveryOrderEntity order) {
+//        Map<String, Object> m = new HashMap<>();
+//        m.put("eventId", event.getId());
+//        m.put("externalOrderId", order.getExternalOrderId());
+//        m.put("status", event.getStatus().name());
+//        m.put("occurredAt", event.getOccurredAt());
+//        m.put("reason", event.getReason());
+//        return m;
+        DeliveryStatusCallbackDTO m = DeliveryStatusCallbackDTO.builder()
+                .eventId(event.getId())
+                .externalOrderId(order.getExternalOrderId())
+                .status(event.getStatus().name())
+                .occurredAt(event.getOccurredAt())
+                .reason(event.getReason())
+                .build();
+
         return m;
     }
+
+    @Builder
+    public record DeliveryStatusCallbackDTO(
+            UUID eventId,
+            String externalOrderId,
+            String status,
+            String reason,
+            OffsetDateTime occurredAt
+    ) {}
 }
 

@@ -10,6 +10,7 @@
 CREATE TABLE IF NOT EXISTS public.users (
     user_type   varchar(31)    NOT NULL,
     id          uuid           NOT NULL,
+    username    varchar(50)    NOT NULL,
     email       varchar(255)   NOT NULL,
     first_name  varchar(100),
     last_name   varchar(100),
@@ -164,6 +165,9 @@ ALTER TABLE public.payments
 
 ALTER TABLE public.users
     ADD CONSTRAINT uk_users_email UNIQUE (email);
+
+ALTER TABLE public.users
+    ADD CONSTRAINT uk_users_username UNIQUE (username);
 
 ALTER TABLE public.orders
     ADD CONSTRAINT uk_orders_order_number UNIQUE (order_number);

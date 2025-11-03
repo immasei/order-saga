@@ -54,9 +54,8 @@ app:
       notifications: notifications
 
   endpoints:
-
-    bank: http://localhost:8081
-    delivery-co: http://localhost:8082
+    delivery-co: http://localhost:8081
+    bank: http://localhost:8082
     email: http://localhost:8083
 
   simulation:
@@ -67,8 +66,3 @@ app:
   delivery:
     # Shared secret for DeliveryCo webhook auth (must match DeliveryCo config)
     secret: change-me
-
-
-logging:
-  level:
-    com.example.store.kafka.saga: DEBUG
