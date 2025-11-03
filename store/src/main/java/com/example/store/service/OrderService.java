@@ -11,7 +11,6 @@ import com.example.store.enums.UserRole;
 import com.example.store.kafka.event.OrderCancellationRequested;
 import com.example.store.kafka.event.OrderPlaced;
 import com.example.store.model.*;
-import com.example.store.repository.OrderItemRepository;
 import com.example.store.repository.UserRepository;
 import com.example.store.repository.ProductRepository;
 import com.example.store.repository.OrderRepository;
