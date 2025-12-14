@@ -1,4 +1,4 @@
-# TUT12-Group02
+# Order Saga Orchestrator
 
 [How to Run](#how-to-run)
    - [1.1 Docker: Setup Kafka and PostgreSQL](#11-docker-setup-kafka-and-postgresql)
