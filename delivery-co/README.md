@@ -1,4 +1,4 @@
-## DeliveryCo Service
+## DeliveryCo as an External Service
 
 ```
 http://localhost:8081
