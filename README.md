@@ -2,6 +2,7 @@
 
 ## Table of Contents
 - [Overview](#overview)
+- [Services](#services)
 - [How to Run](#how-to-run)
    - [1.1 Docker: Setup Kafka and PostgreSQL](#11-docker-setup-kafka-and-postgresql)
    - [1.2 Run 3 applications in Intellj](#12-run-3-applications-in-intellj)
@@ -46,6 +47,25 @@ Store coordinates the saga and calls external services for payment (bank), shipp
 
 - Flyway is used for database schema management and versioned migrations, ensuring consistent database structure across environments.
 - JWT-based authentication is implemented to secure API access and maintain stateless authentication across requests.
+
+## Services
+- [**Store**](https://github.com/immasei/order-saga/tree/main/store)
+   - The main application and Saga Orchestrator.
+   - Manages orders, inventory, saga state, and compensation logic.
+   - Communicates with external systems and uses Kafka internally for asynchronous command/event handling.
+
+- [**Bank**](https://github.com/immasei/order-saga/tree/main/bank)
+   - External payment system.
+   - Manages customers, accounts, payments, and refunds.
+   - Provides both backend APIs and a simple UI for account setup.
+
+- [**DeliveryCo**](https://github.com/immasei/order-saga/tree/main/delivery-co)
+   - External shipping system.
+   - Handles shipment creation and sends delivery status updates (e.g. shipped, delivered, lost).
+
+- [**EmailService**](https://github.com/immasei/order-saga/tree/main/email_service)
+   - External notification system.
+   - Receives order status updates and displays email notifications via a simple UI.
 
 ## How to Run
 ### 1.1 Docker: Setup kafka and postgresql
