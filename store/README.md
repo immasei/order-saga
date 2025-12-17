@@ -1,4 +1,4 @@
-# STORE API README
+# Store as Main Service
 
 ## Frontend & Backend
 ```
