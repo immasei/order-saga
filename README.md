@@ -1,11 +1,13 @@
 # Order Saga Orchestrator
 
-[How to Run](#how-to-run)
+## Table of Contents
+- [Overview](#overview)
+- [How to Run](#how-to-run)
    - [1.1 Docker: Setup Kafka and PostgreSQL](#11-docker-setup-kafka-and-postgresql)
    - [1.2 Run 3 applications in Intellj](#12-run-3-applications-in-intellj)
    - [1.3 Setup Data](#13-setup-data)
 
-[Simulating Order Flow](#simulating-order-flow)
+- [Simulating Order Flow](#simulating-order-flow)
    - [0) Happy Path](#0-happy-path)
    - [1) Create Shipment Failed](#1-create-shipment-failed)
    - [2) Create Payment Failed](#2-create-payment-failed)
@@ -14,6 +16,36 @@
    - [5) Inventory Out of Stock](#5-inventory-out-of-stock)
    - [6) Insufficient Balance](#6-insufficient-balance)
    - [7) Zero Amount Payment (Free Product)](#7-zero-amount-payment-free-product)
+
+## Overview
+A single main application (Store) that implements the Saga Orchestrator pattern for an e-commerce order flow.
+Store coordinates the saga and calls external services for payment (bank), shipping (delivery-co), and notifications (email-service) via WebClient (synchronous).
+
+<p align="center">
+  <img src="./saga-flow.png" width="100%"/>
+</p>
+
+### Asynchronous Messaging
+- Asynchronous messaging (Kafka) is used for communication between Store’s internal components
+(Order, Inventory, Payment, Shipping, Notification).
+- Commands (e.g. ReserveInventory, ChargePayment) and events
+(e.g. InventoryReserved, PaymentSucceeded, ShipmentFailed) are exchanged asynchronously.
+- Temporary downtime of a component or external service does not block the whole system.
+
+### Transactional Outbox Pattern
+- Instead of publishing Kafka events directly, each event is first persisted into an Outbox table within the same database transaction as the business data. A polling-based Outbox publisher then reads pending records from the Outbox table and publishes them to Kafka. This guarantees that database updates and event publication occur as a single atomic action.
+
+### Retry and Idempotency
+- To support safe retries during temporary failures, the system uses idempotency keys when processing commands and events. This allows failed operations to be retried automatically without creating duplicate records or inconsistent state.
+- Idempotency ensures that reprocessing the same event multiple times produces the same result as processing it once, where retries are unavoidable.
+
+### Handling Partial Failures
+- The system maintains data integrity under partial failures using Saga orchestration with compensation logic. The Store application acts as the saga orchestrator, coordinating steps such as inventory reservation, payment charging, and shipment creation
+
+### Database Migration and Security
+
+- Flyway is used for database schema management and versioned migrations, ensuring consistent database structure across environments.
+- JWT-based authentication is implemented to secure API access and maintain stateless authentication across requests.
 
 ## How to Run
 ### 1.1 Docker: Setup kafka and postgresql
@@ -110,6 +142,10 @@
 - We need to put store's bank account in `Store`'s `application.properties` (next step) before we run it.
 
 ### 1.3 Setup data
+
+```
+Why? Our frontend dont support admin operations. xD
+```
 
 - **Step 1**: Open Bank's frontend on 8082, create 2 bank accounts
 
